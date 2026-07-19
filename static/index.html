@@ -38,7 +38,7 @@
 .agent-card.s-done{border-color:var(--green)}.agent-card.s-done .status-label{color:var(--green)}
 .agent-card.s-blocked{border-color:var(--orange)}.agent-card.s-blocked .status-label{color:var(--orange)}
 .agent-card.s-crashed{border-color:var(--red)}.agent-card.s-crashed .status-label{color:var(--red)}
-.agent-card .task-desc{font-size:9px;color:var(--text-dim);line-height:1.3;margin-top:2px;word-break:break-word;grid-column:span 2}
+.agent-card .task-desc{font-size:9px;color:var(--text-dim);line-height:1.3;margin-top:2px;word-break:break-word;grid-column:span 2;white-space:pre-wrap}
 .agent-arrow{color:var(--text-dim);font-size:14px;opacity:.5}
 
 /* Horizontal kanban rows */
@@ -53,7 +53,7 @@
 .kanban-row.row-done .row-label{color:var(--green);background:#0f2a1a}
 .kanban-row.row-crashed .row-label{color:var(--red);background:#2a0f0f}
 .kanban-card{display:inline-flex;align-items:flex-start;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;animation:fadeIn .3s ease}
-.kanban-card .card-icon{font-size:11px;margin-top:1px}.kanban-card .card-content{display:flex;flex-direction:column;gap:1px;max-width:280px}.kanban-card .card-title{font-weight:500;word-break:break-word;line-height:1.3}.kanban-card .card-meta{font-size:8px;color:var(--text-dim)}
+.kanban-card .card-icon{font-size:11px;margin-top:1px}.kanban-card .card-content{display:flex;flex-direction:column;gap:1px;max-width:280px}.kanban-card .card-title{font-weight:500;word-break:break-word;line-height:1.3;white-space:pre-wrap}.kanban-card .card-meta{font-size:8px;color:var(--text-dim)}
 .kanban-row .row-empty{font-size:9px;color:var(--text-dim);padding:4px 8px;opacity:.5}
 
 .findings{margin-top:14px}.findings h3{font-size:11px;margin-bottom:6px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}.findings .finding{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 9px;margin-bottom:3px;font-size:11px;line-height:1.4}
@@ -97,7 +97,7 @@ const SL=s=>s==='ready'?'⏳':s==='running'?'▶':s==='done'?'✓':s==='blocked'
 const SL_LONG=s=>s==='ready'?'Ready':s==='running'?'Running':s==='done'?'Done':s==='blocked'?'Blocked':'Crashed';
 const AGENT_ICON=t=>{const m=(t+'').match(/@(\w+)/);if(!m)return'⬡';const map={finder:'🔍',analyst:'📊',architect:'🏗️',planner:'📋',coder:'💻',reviewer:'👁️',security:'🛡️',integration:'🔗',tester:'🧪',documenter:'📝'};return map[m[1]]||'⚡'};
 // Extract agent-specific task from body (falls back to title after agent name)
-const AGENT_TASK=ch=>{if(ch.body){const m=ch.body.match(/Запрос:\s*(.+?)(?:\n|$)/);if(m)return m[1].trim();return ch.body.split('\n')[0].trim()}const t=(ch.title||'').split(':');return t.slice(1).join(':').trim()};
+const AGENT_TASK=ch=>{if(ch.body)return ch.body;return(ch.title||'').split(':').slice(1).join(':').trim()};
 function FMT(t){if(!t)return'';const d=new Date(t*1000);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
 function DUR(c){if(c.status!=='done')return'';const s=c.started_at||c.created_at;const e=c.completed_at;if(!s||!e)return'';const sec=(e-s);return sec<60?sec+'s':Math.round(sec/60)+'m'}
 function PIPES(){return allTasks.filter(t=>(t.children||[]).length>0).sort((a,b)=>(b.task||b).created_at-(a.task||a).created_at)}
