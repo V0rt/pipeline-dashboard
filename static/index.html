@@ -4,146 +4,115 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pipeline Dashboard</title>
-<style>
-:root {
-  --bg: #0f0f13;
-  --surface: #1a1a24;
-  --surface2: #24243a;
-  --border: #2e2e48;
-  --text: #e0e0f0;
-  --text-dim: #8888aa;
-  --accent: #7c6ff0;
-  --green: #50d890;
-  --yellow: #faca4e;
-  --red: #ff6b6b;
-  --blue: #6cb6ff;
-  --orange: #ffa050;
-  --pink: #ff6b9d;
-  --purple: #b084f0;
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden;
-}
-/* ── Header */
-.header {
-  background:var(--surface); border-bottom:1px solid var(--border);
-  padding:14px 24px; display:flex; align-items:center; justify-content:space-between;
-  position:sticky; top:0; z-index:100;
-}
-.header h1 { font-size:20px; font-weight:600; display:flex; align-items:center; gap:10px; }
-.header h1 span { color:var(--accent); }
-.header .status-bar { display:flex; align-items:center; gap:16px; font-size:13px; color:var(--text-dim); }
-.conn-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
-.conn-online { background:var(--green); box-shadow:0 0 6px var(--green); }
-.conn-offline { background:var(--red); }
-.conn-pending { background:var(--yellow); animation:pulse 1.5s ease-in-out infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+<style>:root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#24243a;--border:#2e2e48;--text:#e0e0f0;--text-dim:#8888aa;--accent:#7c6ff0;--green:#50d890;--yellow:#faca4e;--red:#ff6b6b;--blue:#6cb6ff;--orange:#ffa050;--pink:#ff6b9d;--purple:#b084f0}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:14px;line-height:1.5}
 
-/* ── Layout */
-.layout { display:flex; height:calc(100vh - 64px); overflow:hidden; }
+/* Header */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header h1{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px}
+.header h1 span{color:var(--accent)}
+.header .status-bar{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-dim)}
+.conn-dot{width:7px;height:7px;border-radius:50%;display:inline-block;transition:all .3s}
+.conn-online{background:var(--green);box-shadow:0 0 6px var(--green)}
+.conn-offline{background:var(--red)}
+.conn-pending{background:var(--yellow);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ── Sidebar */
-.sidebar {
-  width:340px; min-width:340px; background:var(--surface);
-  border-right:1px solid var(--border); overflow-y:auto; padding:12px;
-}
-.sidebar h2 {
-  font-size:12px; text-transform:uppercase; letter-spacing:1px;
-  color:var(--text-dim); margin-bottom:10px; padding:0 8px;
-}
-.pipeline-item {
-  background:var(--surface2); border:1px solid var(--border);
-  border-radius:10px; padding:10px 12px; margin-bottom:6px;
-  cursor:pointer; transition:all .15s;
-}
-.pipeline-item:hover { border-color:var(--accent); }
-.pipeline-item.active { border-color:var(--accent); box-shadow:0 0 12px rgba(124,111,240,.15); }
-.pipeline-item .title { font-size:13px; font-weight:500; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.pipeline-item .meta { display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); align-items:center; }
-.badge { font-size:10px; padding:2px 8px; border-radius:4px; font-weight:600; }
-.badge-ready { background:#2a2a40; color:var(--text-dim); }
-.badge-running { background:#1a3a4a; color:var(--blue); }
-.badge-done { background:#1a3a2a; color:var(--green); }
-.badge-blocked { background:#3a2a1a; color:var(--orange); }
-.badge-crashed { background:#3a1a1a; color:var(--red); }
+/* Layout */
+.layout{display:flex;height:calc(100vh - 53px);overflow:hidden}
 
-/* ── Main */
-.main { flex:1; overflow-y:auto; padding:20px 24px; }
+/* Sidebar */
+.sidebar{width:300px;min-width:300px;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:10px}
+.sidebar h2{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);margin-bottom:8px;padding:0 6px;opacity:.7}
+.pipeline-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:5px;cursor:pointer;transition:all .15s;position:relative}
+.pipeline-item:hover{border-color:var(--accent)}
+.pipeline-item.active{border-color:var(--accent);box-shadow:0 0 10px rgba(124,111,240,.12)}
+.pipeline-item .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.pipeline-item .title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;margin-right:8px}
+.pipeline-item .progress-wrap{display:flex;align-items:center;gap:6px}
+.pipeline-item .progress-bar{flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.pipeline-item .progress-fill{height:100%;border-radius:2px;transition:width .4s ease;background:var(--accent)}
+.pipeline-item .progress-fill.done{background:var(--green)}
+.pipeline-item .progress-text{font-size:10px;color:var(--text-dim);min-width:32px;text-align:right}
+.badge{font-size:10px;padding:1px 7px;border-radius:3px;font-weight:600}
+.badge-ready{background:#2a2a40;color:var(--text-dim)}
+.badge-running{background:#1a3a4a;color:var(--blue)}
+.badge-done{background:#1a3a2a;color:var(--green)}
+.badge-blocked{background:#3a2a1a;color:var(--orange)}
+.badge-crashed{background:#3a1a1a;color:var(--red)}
 
-/* ── Empty */
-.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-dim); text-align:center; gap:12px; }
-.empty-state .icon { font-size:48px; opacity:.5; }
-.empty-state h3 { font-size:18px; color:var(--text); }
-.empty-state p { font-size:14px; max-width:400px; }
+/* Main */
+.main{flex:1;overflow-y:auto;padding:16px 20px}
 
-/* ── Pipeline detail */
-.pipeline-detail h2 { font-size:18px; font-weight:600; margin-bottom:2px; }
-.pipeline-detail .subtitle { font-size:12px; color:var(--text-dim); margin-bottom:16px; }
+/* Empty */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);text-align:center;gap:10px}
+.empty-state .icon{font-size:42px;opacity:.4}
+.empty-state h3{font-size:16px;color:var(--text);font-weight:500}
+.empty-state p{font-size:13px;max-width:360px}
 
-/* ── Agent flow */
-.agent-flow { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:20px; }
-.agent-card {
-  background:var(--surface2); border:1px solid var(--border); border-radius:8px;
-  padding:8px 12px; min-width:100px; text-align:center;
-}
-.agent-card .name { font-size:12px; font-weight:600; margin-bottom:2px; }
-.agent-card .status-label { font-size:10px; font-weight:500; }
-.agent-card .agent-time { font-size:9px; color:var(--text-dim); margin-top:2px; }
-.agent-card.s-ready { border-color:#2a2a40; }
-.agent-card.s-ready .status-label { color:var(--text-dim); }
-.agent-card.s-running { border-color:var(--blue); box-shadow:0 0 8px rgba(108,182,255,.15); }
-.agent-card.s-running .status-label { color:var(--blue); }
-.agent-card.s-done { border-color:var(--green); }
-.agent-card.s-done .status-label { color:var(--green); }
-.agent-card.s-blocked { border-color:var(--orange); }
-.agent-card.s-blocked .status-label { color:var(--orange); }
-.agent-card.s-crashed { border-color:var(--red); }
-.agent-card.s-crashed .status-label { color:var(--red); }
-.agent-arrow { color:var(--text-dim); font-size:16px; padding:0 2px; }
+/* Pipeline detail */
+.pipeline-detail h2{font-size:16px;font-weight:600;margin-bottom:1px;display:flex;align-items:center;gap:8px}
+.pipeline-detail .subtitle{font-size:11px;color:var(--text-dim);margin-bottom:14px}
 
-/* ── Kanban board */
-.kanban-board { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:16px; }
-.kanban-col { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-.kanban-col .col-header {
-  padding:8px 12px; font-size:11px; font-weight:600; text-transform:uppercase;
-  letter-spacing:.5px; border-bottom:1px solid var(--border);
-  display:flex; justify-content:space-between; align-items:center;
-}
-.kanban-col .col-header .count { font-size:10px; background:var(--surface2); padding:1px 8px; border-radius:10px; color:var(--text-dim); }
-.kanban-col .col-body { padding:6px; min-height:40px; }
-.kanban-col.col-ready .col-header { color:var(--text-dim); background:#1a1a2a; }
-.kanban-col.col-running .col-header { color:var(--blue); background:#0f1a2a; }
-.kanban-col.col-blocked .col-header { color:var(--orange); background:#2a1a0f; }
-.kanban-col.col-done .col-header { color:var(--green); background:#0f2a1a; }
-.kanban-col.col-crashed .col-header { color:var(--red); background:#2a0f0f; }
-.kanban-card {
-  background:var(--surface2); border:1px solid var(--border); border-radius:6px;
-  padding:6px 8px; margin-bottom:4px; font-size:11px;
-}
-.kanban-card .card-title { font-size:11px; font-weight:500; word-break:break-all; }
-.kanban-card .card-meta { font-size:9px; color:var(--text-dim); display:flex; justify-content:space-between; margin-top:2px; }
+/* Agent flow */
+.agent-flow{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:18px}
+.agent-card{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;transition:all .3s;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.agent-card .icon{font-size:13px;width:18px;text-align:center}
+.agent-card .info{display:flex;flex-direction:column}
+.agent-card .name{font-size:11px;font-weight:600;line-height:1.3}
+.agent-card .status-label{font-size:10px;font-weight:500;line-height:1.2}
+.agent-card .duration{font-size:9px;color:var(--text-dim);line-height:1}
+.agent-card.s-ready{border-color:var(--border)}.agent-card.s-ready .status-label{color:var(--text-dim)}
+.agent-card.s-running{border-color:var(--blue);box-shadow:0 0 6px rgba(108,182,255,.12)}.agent-card.s-running .status-label{color:var(--blue)}
+.agent-card.s-done{border-color:var(--green)}.agent-card.s-done .status-label{color:var(--green)}
+.agent-card.s-blocked{border-color:var(--orange)}.agent-card.s-blocked .status-label{color:var(--orange)}
+.agent-card.s-crashed{border-color:var(--red)}.agent-card.s-crashed .status-label{color:var(--red)}
+.agent-arrow{color:var(--text-dim);font-size:14px;opacity:.5}
 
-/* ── Scrollbar */
-::-webkit-scrollbar { width:5px; height:5px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-::-webkit-scrollbar-thumb:hover { background:var(--text-dim); }
+/* Kanban board */
+.kanban-board{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
+.kanban-col{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.kanban-col .col-header{padding:6px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.kanban-col .col-header .count{font-size:9px;background:var(--surface2);padding:1px 6px;border-radius:8px;color:var(--text-dim)}
+.kanban-col .col-body{padding:5px;min-height:32px}
+.kanban-col.col-ready .col-header{color:var(--text-dim);background:#1a1a2a}
+.kanban-col.col-running .col-header{color:var(--blue);background:#0f1a2a}
+.kanban-col.col-blocked .col-header{color:var(--orange);background:#2a1a0f}
+.kanban-col.col-done .col-header{color:var(--green);background:#0f2a1a}
+.kanban-col.col-crashed .col-header{color:var(--red);background:#2a0f0f}
+.kanban-card{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 7px;margin-bottom:3px;font-size:10px;animation:fadeIn .3s ease}
+.kanban-card .card-title{font-size:10px;font-weight:500;word-break:break-all}
+.kanban-card .card-meta{font-size:8px;color:var(--text-dim);display:flex;justify-content:space-between;margin-top:1px}
+.kanban-col .col-body-empty{font-size:9px;color:var(--text-dim);padding:6px;text-align:center;opacity:.5}
 
-/* ── Responsive */
-@media(max-width:900px){ .sidebar { width:240px; min-width:240px; } .kanban-board { grid-template-columns:repeat(3,1fr); } }
-@media(max-width:600px){ .layout { flex-direction:column; } .sidebar { width:100%; min-width:0; max-height:180px; } .kanban-board { grid-template-columns:1fr; } }
+/* Findings */
+.findings{margin-top:14px}
+.findings h3{font-size:11px;margin-bottom:6px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
+.findings .finding{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 9px;margin-bottom:3px;font-size:11px;line-height:1.4}
+
+/* Flash effect for live updates */
+@keyframes flash{0%{background:rgba(124,111,240,.15)}100%{background:transparent}}
+.flash{animation:flash .6s ease}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-dim)}
+
+/* Responsive */
+@media(max-width:900px){.sidebar{width:220px;min-width:220px}.kanban-board{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.layout{flex-direction:column}.sidebar{width:100%;min-width:0;max-height:160px}.kanban-board{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>⬡ <span>Pipeline</span> Dashboard</h1>
+  <h1>⬡ <span>Pipeline</span></h1>
   <div class="status-bar">
     <span id="updateTime">—</span>
-    <span id="taskCount">0 tasks</span>
-    <span class="conn-dot conn-pending" id="connDot"></span>
-    <span id="connStatus">connecting</span>
+    <span id="taskCount">0</span>
+    <span class="conn-dot" id="connDot"></span>
+    <span id="connStatus">—</span>
   </div>
 </div>
 <div class="layout">
@@ -155,179 +124,129 @@ body {
     <div class="empty-state" id="emptyState">
       <div class="icon">⬡</div>
       <h3>No pipeline runs yet</h3>
-      <p>Run a pipeline with <code>pipeline_save()</code> to see agent tasks appear here in real time.</p>
+      <p>Run a pipeline with <code>pipeline_save()</code> to see agent tasks in real time.</p>
     </div>
-    <div class="pipeline-detail" id="pipelineDetail" style="display:none">
-      <div id="detailContent"></div>
-    </div>
+    <div class="pipeline-detail" id="pipelineDetail" style="display:none"><div id="detailContent"></div></div>
   </div>
 </div>
 <script>
-let allTasks = [];
-let selectedPipeline = null;
-let eventSource = null;
+let allTasks = [], selectedId = null, es = null;
 
-function badge(s) {
-  const c = s==='ready'?'badge-ready':s==='running'?'badge-running':s==='done'?'badge-done':s==='blocked'?'badge-blocked':'badge-crashed';
-  return `<span class="badge ${c}">${s}</span>`;
-}
-function statusLabel(s) {
-  return s==='ready'?'⏳ Ready':s==='running'?'▶ Running':s==='done'?'✓ Done':s==='blocked'?'⊘ Blocked':'✗ Crashed';
-}
-function fmtTime(ts) {
-  if(!ts) return '';
-  const d = new Date(ts * 1000);
-  return d.toLocaleTimeString();
-}
+const BADGE=s=>`<span class="badge badge-${s}">${s}</span>`;
+const SL=s=>s==='ready'?'⏳':s==='running'?'▶':s==='done'?'✓':s==='blocked'?'⊘':'✗';
+const SL_LONG=s=>s==='ready'?'Ready':s==='running'?'Running':s==='done'?'Done':s==='blocked'?'Blocked':'Crashed';
+const AGENT_ICON=t=>{const m=t.match(/@(\w+)/);if(!m)return'⬡';const map={finder:'🔍',analyst:'📊',architect:'🏗️',planner:'📋',coder:'💻',reviewer:'👁️',security:'🛡️',integration:'🔗',tester:'🧪',documenter:'📝'};return map[m[1]]||'⚡'};
+function FMT(t){if(!t)return'';const d=new Date(t*1000);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+function DUR(c){if(c.status!=='done')return'';const s=c.started_at||c.created_at;const e=c.completed_at;if(!s||!e)return'';const sec=(e-s);if(sec<60)return sec+'s';return Math.round(sec/60)+'m'}
 
-// ── Detect which tasks are pipeline parents (have children) ──
-function getPipelines() {
-  return allTasks.filter(t => {
-    const children = t.children || [];
-    return children.length > 0;
-  });
-}
-// ── Detect standalone child tasks (have @ prefix, no children) ──
-function getStandaloneAgents() {
-  return allTasks.filter(t => {
-    const task = t.task || t;
-    const children = t.children || [];
-    return children.length === 0 && task.title && (task.title.startsWith('@') || task.title.startsWith('🔷'));
-  });
-}
+// Get parent pipelines
+function PIPES(){return allTasks.filter(t=>(t.children||[]).length>0)}
 
-// ── Render pipeline list ──
-function renderPipelineList() {
-  const pipes = getPipelines();
-  const container = document.getElementById('pipelineList');
-  if (pipes.length === 0) {
-    container.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:8px;text-align:center">No active pipelines</div>';
-    return;
-  }
-  container.innerHTML = pipes.map(p => {
-    const task = p.task || p;
-    const children = p.children || [];
-    const done = children.filter(c => c.status === 'done').length;
-    const total = children.length;
-    return `<div class="pipeline-item ${task.id === selectedPipeline ? 'active' : ''}"
-      onclick="selectPipeline('${task.id}')">
-      <div class="title">${task.title}</div>
-      <div class="meta">
-        <span>${done}/${total} done</span>
-        ${badge(task.status)}
+// Sidebar
+function RENDER_LIST(){
+  const pipes=PIPES();
+  const el=document.getElementById('pipelineList');
+  if(!pipes.length){el.innerHTML='<div style="color:var(--text-dim);font-size:12px;padding:8px;text-align:center">No active pipelines</div>';return}
+  // Auto-select first on first load
+  if(!selectedId&&pipes.length)selectedId=(pipes[0].task||pipes[0]).id;
+  el.innerHTML=pipes.map(p=>{
+    const t=p.task||p;const c=p.children||[];
+    const done=c.filter(c=>c.status==='done').length;const total=c.length;
+    const pct=total?Math.round(done/total*100):0;
+    const fillClass=pct===100?'done':'';
+    return `<div class="pipeline-item${t.id===selectedId?' active':''}" onclick="SEL('${t.id}')">
+      <div class="top">
+        <div class="title">${t.title}</div>
+        ${BADGE(t.status)}
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+        <span class="progress-text">${done}/${total}</span>
       </div>
     </div>`;
   }).join('');
 }
 
-// ── Select pipeline ──
-function selectPipeline(id) {
-  selectedPipeline = id;
-  renderPipelineList();
-  renderPipelineDetail();
-}
+function SEL(id){selectedId=id;RENDER_LIST();RENDER_DETAIL()}
 
-// ── Render pipeline detail ──
-function renderPipelineDetail() {
-  const detail = document.getElementById('pipelineDetail');
-  const empty = document.getElementById('emptyState');
-  if (!selectedPipeline) { detail.style.display='none'; empty.style.display='flex'; return; }
-  empty.style.display='none'; detail.style.display='block';
-
-  const data = allTasks.find(t => (t.task || t).id === selectedPipeline);
-  if (!data) { document.getElementById('detailContent').innerHTML='<p style="color:var(--text-dim)">Pipeline not found</p>'; return; }
-  const task = data.task || data;
-  const children = data.children || [];
-  const comments = data.comments || [];
-
-  // Agent flow — show each child as a card with arrows
-  let flow = '<div class="agent-flow">';
-  children.forEach((c, i) => {
-    const statusClass = 's-' + (c.status || 'ready');
-    const label = c.title || c.id;
-    flow += `<div class="agent-card ${statusClass}">
-      <div class="name">${label}</div>
-      <div class="status-label">${statusLabel(c.status)}</div>
-      <div class="agent-time">${fmtTime(c.started_at) || fmtTime(c.completed_at) || ''}</div>
-    </div>`;
-    if (i < children.length - 1) flow += '<div class="agent-arrow">→</div>';
+// Detail
+function RENDER_DETAIL(){
+  const el=document.getElementById('pipelineDetail'),empty=document.getElementById('emptyState');
+  if(!selectedId){el.style.display='none';empty.style.display='flex';return}
+  empty.style.display='none';el.style.display='block';
+  const data=allTasks.find(t=>(t.task||t).id===selectedId);
+  if(!data){document.getElementById('detailContent').innerHTML='<p style="color:var(--text-dim)">Not found</p>';return}
+  const t=data.task||data,c=data.children||[],cm=data.comments||[];
+  // Agent flow
+  let flow='<div class="agent-flow">';
+  const agentOrder=(t.pipeline||'').length?t.pipeline:null;
+  let ordered=c;
+  if(agentOrder){ordered=[...agentOrder.map(a=>c.find(ch=>ch.title&&ch.title.includes(a))).filter(Boolean),...c.filter(ch=>!agentOrder.some(a=>ch.title&&ch.title.includes(a)))];}
+  ordered.forEach((ch,i)=>{
+    if(!ch)return;
+    const sc='s-'+(ch.status||'ready');
+    const icon=AGENT_ICON(ch.title||'');
+    const label=(ch.title||ch.id).split(':')[0];
+    flow+=`<div class="agent-card ${sc}"><div class="icon">${icon}</div><div class="info"><div class="name">${label}</div><div class="status-label">${SL(ch.status)} ${SL_LONG(ch.status)}</div><div class="duration">${FMT(ch.started_at)||DUR(ch)||''}</div></div></div>`;
+    if(i<ordered.length-1&&ordered[i+1])flow+='<div class="agent-arrow">→</div>';
   });
-  flow += '</div>';
-
-  // Kanban board
-  const cols = ['ready','running','blocked','done','crashed'];
-  let board = '<div class="kanban-board">';
-  cols.forEach(col => {
-    const cards = children.filter(c => c.status === col);
-    board += `<div class="kanban-col col-${col}">
-      <div class="col-header"><span>${col}</span><span class="count">${cards.length}</span></div>
-      <div class="col-body">${
-        cards.length ? cards.map(c => `<div class="kanban-card">
-          <div class="card-title">${c.title || c.id}</div>
-          <div class="card-meta"><span>${c.assignee || '—'}</span><span>${fmtTime(c.completed_at) || ''}</span></div>
-        </div>`).join('') : '<div style="color:var(--text-dim);font-size:10px;padding:4px;text-align:center">—</div>'
-      }</div></div>`;
+  flow+='</div>';
+  // Kanban
+  const cols=['ready','running','blocked','done','crashed'];
+  let board='<div class="kanban-board">';
+  cols.forEach(col=>{
+    const cards=c.filter(ch=>ch.status===col);
+    board+=`<div class="kanban-col col-${col}"><div class="col-header"><span>${col}</span><span class="count">${cards.length}</span></div><div class="col-body">${
+      cards.length?cards.map(ch=>`<div class="kanban-card"><div class="card-title">${ch.title||ch.id}</div><div class="card-meta"><span>${AGENT_ICON(ch.title||'')} ${FMT(ch.completed_at)||''}</span><span>${DUR(ch)}</span></div></div>`).join(''):'<div class="col-body-empty">—</div>'
+    }</div></div>`;
   });
-  board += '</div>';
-
+  board+='</div>';
   // Comments
-  let cmt = '';
-  if (comments.length) {
-    cmt = '<div style="margin-top:16px"><h3 style="font-size:13px;margin-bottom:8px;color:var(--text-dim)">Findings</h3>'
-      + comments.map(c => `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin-bottom:4px;font-size:12px">${c.text || c.body || JSON.stringify(c)}</div>`).join('')
-      + '</div>';
+  let cmt='';
+  if(cm.length){
+    cmt='<div class="findings"><h3>Findings</h3>'+cm.map(c=>`<div class="finding">${c.text||c.body||JSON.stringify(c)}</div>`).join('')+'</div>';
   }
-
-  document.getElementById('detailContent').innerHTML = `
-    <h2>${task.title}</h2>
-    <div class="subtitle">ID: ${task.id} · ${badge(task.status)} · ${children.length} agents</div>
-    ${children.length ? flow : '<div style="color:var(--text-dim);font-size:13px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:16px">No agent tasks yet</div>'}
-    ${board}
-    ${cmt}
-  `;
+  const done=c.filter(ch=>ch.status==='done').length;const total=c.length;
+  document.getElementById('detailContent').innerHTML=
+    `<h2>${t.title} ${total?`<span style="font-size:11px;font-weight:400;color:var(--text-dim)">${done}/${total}</span>`:''}</h2>
+    <div class="subtitle">${BADGE(t.status)} · ${total} agents · ${t.id.slice(0,10)}…</div>
+    ${c.length?flow:'<div style="color:var(--text-dim);font-size:12px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:14px">No agent tasks yet</div>'}
+    ${board}${cmt}`;
 }
 
-// ── Refresh ──
-async function refreshTasks() {
-  try {
-    const r = await fetch('/api/refresh');
-    allTasks = await r.json();
-    document.getElementById('taskCount').textContent = allTasks.length + ' tasks';
-    renderPipelineList();
-    renderPipelineDetail();
-    document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
-  } catch(e) { console.error('refresh', e); }
+// Refresh
+async function REFRESH(){
+  try{
+    const r=await fetch('/api/refresh');allTasks=await r.json();
+    document.getElementById('taskCount').textContent=allTasks.length;
+    const prev=selectedId;RENDER_LIST();RENDER_DETAIL();
+    document.getElementById('updateTime').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }catch(e){console.error(e)}
 }
 
-// ── SSE ──
-function connectSSE() {
-  if (eventSource) eventSource.close();
-  const dot = document.getElementById('connDot');
-  const st = document.getElementById('connStatus');
-  dot.className = 'conn-dot conn-pending'; st.textContent = 'connecting';
-
-  eventSource = new EventSource('/api/events');
-  eventSource.addEventListener('task_update', e => {
-    const d = JSON.parse(e.data);
-    const idx = allTasks.findIndex(t => (t.task || t).id === d.task_id);
-    if (idx >= 0) { allTasks[idx] = d.data; } else { allTasks.push(d.data); }
-    document.getElementById('taskCount').textContent = allTasks.length + ' tasks';
-    renderPipelineList(); renderPipelineDetail();
-    document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+// SSE
+function SSE(){
+  if(es)es.close();
+  const dot=document.getElementById('connDot'),st=document.getElementById('connStatus');
+  dot.className='conn-dot conn-pending';st.textContent='...';
+  es=new EventSource('/api/events');
+  es.addEventListener('task_update',e=>{
+    const d=JSON.parse(e.data);const idx=allTasks.findIndex(t=>(t.task||t).id===d.task_id);
+    if(idx>=0)allTasks[idx]=d.data;else allTasks.push(d.data);
+    document.getElementById('taskCount').textContent=allTasks.length;
+    RENDER_LIST();RENDER_DETAIL();
+    document.getElementById('updateTime').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   });
-  eventSource.addEventListener('task_removed', e => {
-    const d = JSON.parse(e.data);
-    allTasks = allTasks.filter(t => (t.task || t).id !== d.task_id);
-    if (selectedPipeline === d.task_id) selectedPipeline = null;
-    document.getElementById('taskCount').textContent = allTasks.length + ' tasks';
-    renderPipelineList(); renderPipelineDetail();
+  es.addEventListener('task_removed',e=>{
+    const d=JSON.parse(e.data);allTasks=allTasks.filter(t=>(t.task||t).id!==d.task_id);
+    if(selectedId===d.task_id)selectedId=null;
+    document.getElementById('taskCount').textContent=allTasks.length;
+    RENDER_LIST();RENDER_DETAIL();
   });
-  eventSource.onopen = () => { dot.className='conn-dot conn-online'; st.textContent='connected'; refreshTasks(); };
-  eventSource.onerror = () => { dot.className='conn-dot conn-offline'; st.textContent='disconnected'; setTimeout(connectSSE, 3000); };
+  es.onopen=()=>{dot.className='conn-dot conn-online';st.textContent='live';REFRESH()};
+  es.onerror=()=>{dot.className='conn-dot conn-offline';st.textContent='off';setTimeout(SSE,2000)};
 }
-
-refreshTasks();
-connectSSE();
+REFRESH();SSE();
 </script>
 </body>
 </html>
