@@ -13,7 +13,6 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
 app = FastAPI(title="Pipeline Dashboard", version="0.1.0")
