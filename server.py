@@ -15,6 +15,7 @@ HOST = os.environ.get("HOST", "0.0.0.0")
 # Global broadcast: set of (wfile, lock) tuples for active SSE clients
 _sse_clients: set[tuple] = set()
 _sse_lock = threading.Lock()
+_sse_event = threading.Event()  # event-driven: set() on DB change, clear() after broadcast
 
 STATUS_LABELS = {"triage": "Triage", "todo": "Todo", "ready": "Ready", "running": "Running",
                  "blocked": "Blocked", "done": "Done", "archived": "Archived"}
@@ -126,6 +127,7 @@ def _notify_clients(tree=None):
                 except (BrokenPipeError, ConnectionResetError, OSError):
                     dead.add((wfile, lock))
         _sse_clients -= dead
+    _sse_event.set()  # wake up polling waiters
 
 
 def delete_task(task_id):
@@ -350,9 +352,21 @@ class SSEHandler(http.server.BaseHTTPRequestHandler):
         with _sse_lock:
             _sse_clients.add((wfile, lock))
 
+        # Send initial tree, then wait for events
         last_tree = None
         try:
+            tree = load_tree()
+            tree_json = json.dumps(tree, ensure_ascii=False, sort_keys=True)
+            last_tree = tree_json
+            msg = f"event: full_update\ndata: {tree_json}\n\n"
+            with lock:
+                wfile.write(msg.encode())
+                wfile.flush()
+
             while True:
+                # Wait for either _sse_event (DB changed) or timeout (keepalive)
+                _sse_event.wait(timeout=5)
+                _sse_event.clear()
                 tree = load_tree()
                 tree_json = json.dumps(tree, ensure_ascii=False, sort_keys=True)
                 if tree_json != last_tree:
@@ -362,14 +376,10 @@ class SSEHandler(http.server.BaseHTTPRequestHandler):
                         wfile.write(msg.encode())
                         wfile.flush()
                 else:
-                    # Still send a keepalive ping every 3rd cycle
-                    now = time.monotonic()
-                    if not hasattr(self, '_last_ping') or now - self._last_ping > 4.5:
-                        self._last_ping = now
-                        with lock:
-                            wfile.write(b"event: ping\ndata: {}\n\n")
-                            wfile.flush()
-                time.sleep(1.5)
+                    # Keepalive ping
+                    with lock:
+                        wfile.write(b"event: ping\ndata: {}\n\n")
+                        wfile.flush()
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
         finally:

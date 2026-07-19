@@ -3,7 +3,7 @@
 Real-time web dashboard for [Hermes Pipeline Plugin](https://hermes-agent.nousresearch.com/docs).
 Shows agent states, kanban tasks, and pipeline flow — updated live via SSE.
 
-![Pipeline Dashboard screenshot](https://via.placeholder.com/800x450/1a1a24/7c6ff0?text=Pipeline+Dashboard)
+![Pipeline Dashboard screenshot](./screenshot.png)
 
 ## Quick Start
 

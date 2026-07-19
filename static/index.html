@@ -62,6 +62,8 @@
   .ch .ch-progress{font-size:12px;color:#a1a1aa;white-space:nowrap;flex-shrink:0}
   .ch .ch-toggle{color:#52525b;font-size:16px;width:18px;text-align:center;flex-shrink:0}
 
+  .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+
   .pb-wrap{height:3px;background:#27272a;margin:0 14px;border-radius:2px;overflow:hidden}
   .pb-fill{height:100%;border-radius:2px;transition:width .6s ease}
   .pb-wrap.running .pb-fill{background:linear-gradient(90deg,#f59e0b,#fbbf24,#f59e0b);background-size:200% 100%;
@@ -246,7 +248,7 @@ function render(){
 
       html+='<div class="card'+(hasRunning?' has-running':'')+(isDone?' all-done':'')+'">';
       html+='<div class="ch" onclick="toggle(\''+esc(p.id)+'\')">';
-      html+='<span class="status-dot" style="background:'+color+'\"></span>';
+      html+='<span class="status-dot" style="background:'+color+'"></span>';
       html+='<span class="ch-title">'+esc(p.title)+'</span>';
       html+='<span class="ch-pid">'+esc(p.id)+'</span>';
       html+='<span class="ch-progress">'+txt+'</span>';
@@ -267,7 +269,7 @@ function render(){
           const child=childMap[agent];
           const st=child?child.status:'todo';
           html+='<span class="flow-step '+st+'">';
-          html+='<span class="fs-dot" style="background:'+(COLOR[st]||'#64748b')+'\"></span>';
+          html+='<span class="fs-dot" style="background:'+(COLOR[st]||'#64748b')+'"></span>';
           html+='<span class="fs-name">'+esc(agent)+'</span>';
           if(child&&st==='done')html+='<span style="color:#4ade80;font-size:11px">✓</span>';
           html+='</span>';
@@ -307,7 +309,7 @@ function render(){
           }
 
           html+='<div class="ag">';
-          html+='<span class="ag-dot'+(isRunningNow?' running-pulse':'')+'" style="background:'+cc+'\"></span>';
+          html+='<span class="ag-dot'+(isRunningNow?' running-pulse':'')+'" style="background:'+cc+'"></span>';
           html+='<span class="ag-name">'+esc(agent)+'</span>';
           html+='<span class="ag-task">'+esc(taskTitle)+'</span>';
           html+='<span class="ag-status ag-s-'+c.status+'">'+(LABEL[c.status]||c.status)+'</span>';
@@ -393,21 +395,13 @@ function connectSSE(){
     if(sseRetries<=3)liveDot.className='live-dot reconnecting';
     else liveDot.className='live-dot dead';
     if(sseRetries>10){
-      showToast('SSE отключён после '+sseRetries+' попыток','err');
+      toast('SSE отключён после '+sseRetries+' попыток','err');
       return;
     }
     setTimeout(connectSSE,delay);
   });
 }
 connectSSE();
-
-function showToast(msg,type){
-  const el=document.createElement('div');
-  el.className='toast '+(type||'ok');
-  el.innerHTML=msg+' <span onclick="this.parentElement.remove()">✕</span>';
-  document.body.appendChild(el);
-  setTimeout(()=>el.remove(),4000);
-}
 
 fetch('/api/tasks').then(r=>r.json()).then(data=>{
   expanded=new Set();
