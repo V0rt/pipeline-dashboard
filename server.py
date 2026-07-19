@@ -29,8 +29,11 @@ _enriched_cache_key: str | None = None
 
 
 def _build_cache_key(tasks: list[dict]) -> str:
-    """Build a cache key from the current task list IDs + titles."""
-    return json.dumps([{"id": t.get("id"), "title": t.get("title")} for t in tasks], sort_keys=True)
+    """Build a cache key from the current task list IDs + titles + statuses."""
+    return json.dumps(
+        [{"id": t.get("id"), "title": t.get("title"), "status": t.get("status")} for t in tasks],
+        sort_keys=True,
+    )
 
 
 def _get_enriched_cached(tasks: list[dict]) -> list[dict]:
