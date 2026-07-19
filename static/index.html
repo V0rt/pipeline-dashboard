@@ -1,214 +1,371 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pipeline Dashboard</title>
-<style>:root{--bg:#0f0f13;--surface:#1a1a24;--surface2:#24243a;--border:#2e2e48;--text:#e0e0f0;--text-dim:#8888aa;--accent:#7c6ff0;--green:#50d890;--yellow:#faca4e;--red:#ff6b6b;--blue:#6cb6ff;--orange:#ffa050}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:14px;line-height:1.5}
-.header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.header h1{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px}.header h1 span{color:var(--accent)}.header .status-bar{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-dim)}
-.conn-dot{width:7px;height:7px;border-radius:50%;display:inline-block;transition:all .3s}
-.conn-online{background:var(--green);box-shadow:0 0 6px var(--green)}.conn-offline{background:var(--red)}.conn-pending{background:var(--yellow);animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.layout{display:flex;height:calc(100vh - 53px);overflow:hidden}
-.sidebar{width:280px;min-width:280px;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:10px}
-.sidebar h2{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);margin-bottom:8px;padding:0 6px;opacity:.7}
-.pipeline-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:5px;cursor:pointer;transition:all .15s}
-.pipeline-item:hover{border-color:var(--accent)}.pipeline-item.active{border-color:var(--accent);box-shadow:0 0 10px rgba(124,111,240,.12)}
-.pipeline-item .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
-.pipeline-item .title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;margin-right:8px}
-.pipeline-item .progress-wrap{display:flex;align-items:center;gap:6px}
-.pipeline-item .progress-bar{flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
-.pipeline-item .progress-fill{height:100%;border-radius:2px;transition:width .4s ease;background:var(--accent)}
-.pipeline-item .progress-fill.done{background:var(--green)}
-.pipeline-item .progress-text{font-size:10px;color:var(--text-dim);min-width:32px;text-align:right}
-.pipeline-time{font-size:9px;color:var(--text-dim);margin-top:3px;opacity:.4}
-.badge{font-size:10px;padding:1px 7px;border-radius:3px;font-weight:600}
-.badge-ready{background:#2a2a40;color:var(--text-dim)}.badge-running{background:#1a3a4a;color:var(--blue)}.badge-done{background:#1a3a2a;color:var(--green)}.badge-blocked{background:#3a2a1a;color:var(--orange)}.badge-crashed{background:#3a1a1a;color:var(--red)}.badge-todo{background:var(--surface);color:var(--text-dim)}
-.main{flex:1;overflow-y:auto;padding:16px 20px}
-.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);text-align:center;gap:10px}
-.empty-state .icon{font-size:42px;opacity:.4}.empty-state h3{font-size:16px;color:var(--text);font-weight:500}.empty-state p{font-size:13px;max-width:360px}
-.pipeline-detail h2{font-size:16px;font-weight:600;margin-bottom:1px;display:flex;align-items:center;gap:8px}.pipeline-detail .subtitle{font-size:11px;color:var(--text-dim);margin-bottom:14px}
-.agent-flow{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:14px}
-.agent-card{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;transition:all .3s;animation:fadeIn .3s ease;font-size:11px}
-@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.agent-card .icon{font-size:12px;width:16px;text-align:center}.agent-card .info{display:flex;align-items:center;gap:4px}.agent-card .name{font-weight:600;line-height:1.2}.agent-card .agent-stage{font-size:9px;color:var(--text-dim);opacity:.6;margin-left:1px}.agent-card .status-label{font-size:10px;font-weight:500;line-height:1.2;margin-left:2px}
-.agent-card.s-ready{border-color:var(--border);opacity:.7}.agent-card.s-ready .status-label{color:var(--text-dim)}
-.agent-card.s-running{border-color:var(--blue);box-shadow:0 0 6px rgba(108,182,255,.12)}.agent-card.s-running .status-label{color:var(--blue)}
-.agent-card.s-done{border-color:var(--green)}.agent-card.s-done .status-label{color:var(--green)}
-.agent-card.s-blocked{border-color:var(--orange)}.agent-card.s-blocked .status-label{color:var(--orange)}
-.agent-card.s-crashed{border-color:var(--red)}.agent-card.s-crashed .status-label{color:var(--red)}
-.agent-arrow{color:var(--text-dim);font-size:12px;opacity:.4}
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+       background:#0f0f11;color:#e4e4e7;font-size:14px;line-height:1.5}
 
-/* Horizontal kanban rows */
-.kanban-rows{display:flex;flex-direction:column;gap:6px;margin-top:14px}
-.kanban-row{background:var(--surface);border:1px solid var(--border);border-radius:8px;display:flex;align-items:stretch;min-height:44px}
-.kanban-row .row-label{width:90px;min-width:90px;padding:8px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between;border-right:1px solid var(--border)}
-.kanban-row .row-label .count{font-size:9px;background:var(--surface2);padding:1px 6px;border-radius:8px;color:var(--text-dim);margin-left:4px}
-.kanban-row .row-cards{flex:1;padding:5px 8px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
-.kanban-row.row-ready .row-label{color:var(--text-dim);background:#1a1a2a}
-.kanban-row.row-running .row-label{color:var(--blue);background:#0f1a2a}
-.kanban-row.row-blocked .row-label{color:var(--orange);background:#2a1a0f}
-.kanban-row.row-done .row-label{color:var(--green);background:#0f2a1a}
-.kanban-row.row-crashed .row-label{color:var(--red);background:#2a0f0f}
-.kanban-row.row-todo .row-label{color:var(--text-dim);background:var(--surface);opacity:.6}
-.kanban-card{display:inline-flex;align-items:flex-start;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;animation:fadeIn .3s ease}
-.kanban-card .card-icon{font-size:11px;margin-top:1px}.kanban-card .card-content{display:flex;flex-direction:column;gap:1px;max-width:260px}.kanban-card .card-title{font-weight:500;word-break:break-word;line-height:1.3;white-space:pre-wrap;max-height:42px;overflow:hidden}.kanban-card .card-meta{font-size:8px;color:var(--text-dim)}
-.kanban-row .row-empty{font-size:9px;color:var(--text-dim);padding:4px 8px;opacity:.5}
+  header{background:#1a1a1e;border-bottom:1px solid #27272a;padding:12px 20px;
+         display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+  h1{font-size:18px;font-weight:600;color:#fafafa}
+  .badge{background:#27272a;color:#a1a1aa;border-radius:999px;padding:2px 10px;font-size:13px}
+  #lastUpdate{margin-left:auto;color:#52525b;font-size:12px}
+  .subhead{color:#52525b;font-size:12px}
+  .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;
+            margin-right:6px;vertical-align:middle;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-.findings{margin-top:14px}.findings h3{font-size:11px;margin-bottom:6px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}.findings .finding{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 9px;margin-bottom:3px;font-size:11px;line-height:1.4}
-::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}::-webkit-scrollbar-thumb:hover{background:var(--text-dim)}
-@media(max-width:900px){.sidebar{width:220px;min-width:220px}}@media(max-width:600px){.layout{flex-direction:column}.sidebar{width:100%;min-width:0;max-height:160px}}
+  .hdr-actions{display:flex;gap:6px;align-items:center}
+
+  .btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;
+       border:1px solid #27272a;background:#1f1f23;color:#a1a1aa;font-size:11px;cursor:pointer;
+       transition:all .15s;font-family:inherit;line-height:1.4}
+  .btn:hover{border-color:#3f3f46;color:#d4d4d8}
+  .btn-del{border-color:#7f1d1d20;color:#a1a1aa}
+  .btn-del:hover{border-color:#ef4444;color:#ef4444;background:#450a0a}
+  .btn-del.confirm{border-color:#ef4444;background:#450a0a;color:#fca5a5;font-weight:600}
+  .btn-arch{border-color:#27272a;color:#a1a1aa}
+  .btn-arch:hover{border-color:#78716c;color:#d6d3d1}
+  .btn-run{border-color:#27272a}
+  .btn-run:hover{border-color:#22c55e;color:#4ade80}
+  .btn-sm{padding:2px 7px;font-size:11px}
+
+  main{max-width:820px;margin:0 auto;padding:12px 16px}
+
+  .card{background:#18181b;border:1px solid #27272a;border-radius:10px;margin-bottom:10px;overflow:hidden}
+  .card.has-running{border-color:#f59e0b55}
+  .card.all-done{opacity:.5}
+  .card.all-done:hover{opacity:.8}
+
+  .ch{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none}
+  .ch:hover{background:#1f1f23}
+  .ch .ch-title{flex:1;font-weight:500;color:#f4f4f5;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ch .ch-pid{color:#52525b;font-size:11px;font-family:monospace;flex-shrink:0}
+  .ch .ch-progress{font-size:12px;color:#a1a1aa;white-space:nowrap;flex-shrink:0}
+  .ch .ch-toggle{color:#52525b;font-size:16px;width:18px;text-align:center;flex-shrink:0}
+
+  .pb-wrap{height:3px;background:#27272a;margin:0 14px;border-radius:2px;overflow:hidden}
+  .pb-fill{height:100%;border-radius:2px;transition:width .6s ease}
+  .pb-wrap.running .pb-fill{background:linear-gradient(90deg,#f59e0b,#fbbf24,#f59e0b);background-size:200% 100%;
+                             animation:shimmer 2s infinite linear}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  .body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+  .body.open{max-height:5000px}
+
+  .pane{padding:0 14px 12px}
+
+  /* action toolbar per card */
+  .act-row{display:flex;gap:5px;padding:6px 0 8px;flex-wrap:wrap;border-top:1px solid #1f1f23;margin-top:6px}
+
+  /* agent flow row */
+  .flow{display:flex;align-items:center;gap:6px;padding:6px 9px;margin-bottom:6px;border-radius:6px;
+        background:#131316;font-size:12px;flex-wrap:wrap}
+  .flow-step{display:flex;align-items:center;gap:4px}
+  .flow-arrow{color:#3f3f46;font-size:12px}
+  .flow-step .fs-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .flow-step .fs-name{color:#a1a1aa}
+  .flow-step.done .fs-name{color:#4ade80;font-weight:500}
+  .flow-step.running .fs-name{color:#fbbf24;font-weight:600}
+  .flow-step.running .fs-dot{animation:pulse 1.2s infinite}
+  .flow-step.todo .fs-name{color:#52525b}
+  .flow-step.blocked .fs-name{color:#f87171}
+  .flow-step.ready .fs-name{color:#93c5fd}
+
+  .ag{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;font-size:13px}
+  .ag:hover{background:#1f1f23}
+  .ag .ag-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .ag .ag-dot.running-pulse{animation:pulse 1s infinite}
+  .ag .ag-name{font-weight:500;flex-shrink:0;min-width:74px;color:#d4d4d8}
+  .ag .ag-task{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e4e4e7}
+  .ag .ag-status{font-size:11px;font-weight:500;padding:1px 7px;border-radius:4px;flex-shrink:0}
+  .ag .ag-s-running{background:#f59e0b22;color:#fbbf24}
+  .ag .ag-s-done{background:#22c55e22;color:#4ade80}
+  .ag .ag-s-todo{background:#27272a;color:#a1a1aa}
+  .ag .ag-s-ready{background:#3b82f622;color:#93c5fd}
+  .ag .ag-s-blocked{background:#ef444422;color:#f87171}
+  .ag .ag-s-triage{background:#27272a;color:#94a3b8}
+  .ag .ag-time{color:#52525b;font-size:11px;flex-shrink:0}
+  .ag .ag-heartbeat{width:6px;height:6px;border-radius:50%;flex-shrink:0;display:inline-block;vertical-align:middle}
+
+  .empty{text-align:center;padding:60px 20px;color:#52525b}
+  .empty small{display:block;margin-top:6px;font-size:13px;color:#3f3f46}
+
+  .toast{position:fixed;bottom:20px;right:20px;background:#18181b;border:1px solid #27272a;
+         border-radius:8px;padding:10px 16px;font-size:13px;z-index:100;
+         box-shadow:0 4px 16px #00000066;animation:slideUp .2s ease}
+  @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .toast.err{border-color:#ef4444;color:#fca5a5}
+  .toast.ok{border-color:#22c55e;color:#86efac}
+  .toast span{margin-left:8px;color:#52525b;font-size:11px;cursor:pointer}
 </style>
 </head>
 <body>
-<div class="header">
-  <h1>⬡ <span>Pipeline</span></h1>
-  <div class="status-bar">
-    <span id="updateTime">—</span>
-    <span id="taskCount">0</span>
-    <span class="conn-dot" id="connDot"></span>
-    <span id="connStatus">—</span>
+<header>
+  <span class="live-dot"></span>
+  <h1>Pipeline</h1>
+  <span class="badge" id="countBadge">0</span>
+  <span class="subhead" id="runningInfo"></span>
+  <div class="hdr-actions">
+    <button class="btn btn-sm" onclick="expandAll()" title="Развернуть все">Развернуть</button>
+    <button class="btn btn-sm" onclick="collapseAll()" title="Свернуть все">Свернуть</button>
+    <button class="btn btn-arch" onclick="archiveAllDone()">Архивировать выполненные</button>
   </div>
-</div>
-<div class="layout">
-  <div class="sidebar">
-    <h2>Pipelines</h2>
-    <div id="pipelineList"></div>
-  </div>
-  <div class="main">
-    <div class="empty-state" id="emptyState">
-      <div class="icon">⬡</div>
-      <h3>No pipeline runs yet</h3>
-      <p>Run a pipeline with <code>pipeline_save()</code> to see agent tasks in real time.</p>
-    </div>
-    <div class="pipeline-detail" id="pipelineDetail" style="display:none"><div id="detailContent"></div></div>
-  </div>
-</div>
+  <span id="lastUpdate"></span>
+</header>
+<main id="app"><div class="empty">Загрузка...</div></main>
+
 <script>
-let allTasks = [], selectedId = null, es = null;
+const LABEL={triage:'Triage',todo:'Todo',ready:'Ready',running:'Running',blocked:'Blocked',done:'Done',archived:'Archived'};
+const COLOR={triage:'#94a3b8',todo:'#64748b',ready:'#3b82f6',running:'#f59e0b',blocked:'#ef4444',done:'#22c55e',archived:'#78716c'};
+const app=document.getElementById('app');
+const countBadge=document.getElementById('countBadge');
+const runningInfo=document.getElementById('runningInfo');
+const lastUpdate=document.getElementById('lastUpdate');
+let allTasks=[],expanded=new Set();
+let deletePending={}; // task_id -> setTimeout id
 
-// XSS-safe HTML escaping
-const esc = s => (''+s).replace(/[&<>"']/g, c =>
-  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]||c);
+function esc(s){return(''+s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]||c)}
 
-const BADGE=s=>`<span class="badge badge-${esc(s)}">${esc(s)}</span>`;
-const SL=s=>s==='todo'?'○':s==='ready'?'⏳':s==='running'?'▶':s==='done'?'✓':s==='blocked'?'⊘':'✗';
-const SL_LONG=s=>s==='ready'?'Ready':s==='running'?'Running':s==='done'?'Done':s==='blocked'?'Blocked':'Crashed';
-const AGENT_ICON=t=>{const m=(t+'').match(/@(\w+)/);if(!m)return'⬡';const map={finder:'🔍',analyst:'📊',architect:'🏗️',planner:'📋',coder:'💻',reviewer:'👁️',security:'🛡️',integration:'🔗',tester:'🧪',documenter:'📝'};return map[m[1]]||'⚡'};
-// Extract agent-specific task from body (falls back to title after agent name)
-const AGENT_TASK=ch=>{if(ch.body)return ch.body;return(ch.title||'').split(':').slice(1).join(':').trim()};
-// Extract agent stage name (finder, fixer, etc.) from title
-const AGENT_STAGE=ch=>{const t=ch.title||'';const m=t.match(/@(\w+)/);if(m)return m[1];return(ch.body||'').match(/Этап:\s*(\w+)/)?.[1]||''};
-function FMT(t){if(!t)return'';const d=new Date(t*1000);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
-function DUR(c){if(c.status!=='done')return'';const s=c.started_at||c.created_at;const e=c.completed_at;if(!s||!e)return'';const sec=(e-s);return sec<60?sec+'s':Math.round(sec/60)+'m'}
-function PIPES(){return allTasks.filter(t=>(t.children||[]).length>0).sort((a,b)=>(b.task||b).created_at-(a.task||a).created_at)}
-
-function RENDER_LIST(){
-  const pipes=PIPES(),el=document.getElementById('pipelineList');
-  if(!pipes.length){el.innerHTML='<div style="color:var(--text-dim);font-size:12px;padding:8px;text-align:center">No active pipelines</div>';return}
-  if(!selectedId&&pipes.length)selectedId=(pipes[0].task||pipes[0]).id;
-  el.innerHTML=pipes.map(p=>{
-    const t=p.task||p,c=p.children||[];
-    const done=c.filter(x=>x.status==='done').length,total=c.length;
-    const pct=total?Math.round(done/total*100):0;
-    return `<div class="pipeline-item${t.id===selectedId?' active':''}" onclick="SEL('${t.id}')">
-      <div class="top"><div class="title">${esc(t.title)}</div>${BADGE(t.status)}</div>
-      <div class="progress-wrap">
-        <div class="progress-bar"><div class="progress-fill${pct===100?' done':''}" style="width:${pct}%"></div></div>
-        <span class="progress-text">${done}/${total}</span>
-      </div>
-      <div class="pipeline-time">${t.created_at?esc(FMT(t.created_at)):''}</div></div>`;
-  }).join('');
+function ago(ts){
+  if(!ts)return'';
+  const s=Math.floor(Date.now()/1000-ts);
+  if(s<0)return'только что';
+  if(s<60)return s+'с';const m=Math.floor(s/60);
+  if(m<60)return m+'м';const h=Math.floor(m/60);
+  return h+'ч '+m%60+'м';
+}
+function fmtTime(ts){
+  if(!ts)return'';
+  return new Date(ts*1000).toLocaleTimeString();
+}
+function toast(msg,type){
+  const el=document.createElement('div');
+  el.className='toast '+(type||'ok');
+  el.innerHTML=msg+' <span onclick="this.parentElement.remove()">✕</span>';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),4000);
 }
 
-function SEL(id){selectedId=id;RENDER_LIST();RENDER_DETAIL()}
-
-function RENDER_DETAIL(){
-  const el=document.getElementById('pipelineDetail'),empty=document.getElementById('emptyState');
-  if(!selectedId){el.style.display='none';empty.style.display='flex';return}
-  empty.style.display='none';el.style.display='block';
-  const data=allTasks.find(t=>(t.task||t).id===selectedId);
-  if(!data){document.getElementById('detailContent').innerHTML='<p style="color:var(--text-dim)">Not found</p>';return}
-  const t=data.task||data,c=data.children||[],cm=data.comments||[];
-  // Agent flow
-  let flow='<div class="agent-flow">';
-  const agentOrder=(t.pipeline||'').length?t.pipeline:null;
-  let ordered=c;
-  if(agentOrder)ordered=[...agentOrder.map(a=>c.find(ch=>ch.title&&ch.title.includes(a))).filter(Boolean),...c.filter(ch=>!agentOrder.some(a=>ch.title&&ch.title.includes(a)))];
-  ordered.forEach((ch,i)=>{
-    if(!ch)return;
-    const sc='s-'+(ch.status||'ready');
-    const icon=AGENT_ICON(ch.title||'');
-    const label=(ch.title||ch.id).split(':')[0];
-    const stage=AGENT_STAGE(ch);
-    const dur=DUR(ch);
-    flow+=`<div class="agent-card ${sc}"><span class="icon">${icon}</span><div class="info"><span class="name">${esc(label)}</span>${stage?`<span class="agent-stage">${esc(stage)}</span>`:''}<span class="status-label">${SL(ch.status)}</span></div>${dur?`<span style="font-size:9px;color:var(--text-dim);margin-left:2px">${esc(dur)}</span>`:''}</div>`;
-    if(i<ordered.length-1&&ordered[i+1])flow+='<div class="agent-arrow">→</div>';
-  });
-  flow+='</div>';
-  // Horizontal kanban rows
-  const cols=['todo','ready','running','blocked','done','crashed'];
-  let board='<div class="kanban-rows">';
-  cols.forEach(col=>{
-    const cards=c.filter(ch=>ch.status===col);
-    board+=`<div class="kanban-row row-${col}"><div class="row-label"><span>${col}</span><span class="count">${cards.length}</span></div><div class="row-cards">${
-      cards.length?cards.map(ch=>`<div class="kanban-card"><span class="card-icon">${AGENT_ICON(ch.title||'')}</span><div class="card-content"><div class="card-title">${esc(AGENT_TASK(ch))}</div><span class="card-meta">${AGENT_STAGE(ch)?esc(AGENT_STAGE(ch))+' · ':''}${FMT(ch.started_at)?esc(FMT(ch.started_at)):''}${DUR(ch)?' · '+esc(DUR(ch)):''}</span></div></div>`).join(''):'<span class="row-empty">—</span>'
-    }</div></div>`;
-  });
-  board+='</div>';
-  // Comments
-  let cmt='';
-  if(cm.length)cmt='<div class="findings"><h3>Findings</h3>'+cm.map(c=>`<div class="finding">${esc(c.text||c.body||JSON.stringify(c))}</div>`).join('')+'</div>';
-  const done=c.filter(ch=>ch.status==='done').length,total=c.length;
-  document.getElementById('detailContent').innerHTML=
-    `<h2>${esc(t.title)} ${total?`<span style="font-size:11px;font-weight:400;color:var(--text-dim)">${done}/${total}</span>`:''}</h2>
-    <div class="subtitle">${BADGE(t.status)} · ${total} agents · ${esc(t.id.slice(0,10))}…</div>
-    ${c.length?flow:'<div style="color:var(--text-dim);font-size:12px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:14px">No agent tasks yet</div>'}
-    ${board}${cmt}`;
-}
-
-async function REFRESH(){
+async function api(method,path){
   try{
-    const r=await fetch('/api/refresh');allTasks=await r.json();
-    document.getElementById('taskCount').textContent=allTasks.length;
-    RENDER_LIST();RENDER_DETAIL();
-    document.getElementById('updateTime').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  }catch(e){console.error(e)}
+    const r=await fetch(path,{method});
+    const d=await r.json();
+    if(!d.ok)throw new Error(d.error||'API error');
+    return d;
+  }catch(e){
+    toast('Ошибка: '+e.message,'err');
+    throw e;
+  }
 }
 
-function SSE(){
-  if(es)es.close();
-  const dot=document.getElementById('connDot'),st=document.getElementById('connStatus');
-  dot.className='conn-dot conn-pending';st.textContent='connecting...';
-  es=new EventSource('/api/events');
-  es.addEventListener('task_update',e=>{
-    const d=JSON.parse(e.data);const idx=allTasks.findIndex(t=>(t.task||t).id===d.task_id);
-    if(idx>=0)allTasks[idx]=d.data;else allTasks.push(d.data);
-    document.getElementById('taskCount').textContent=allTasks.length;
-    RENDER_LIST();RENDER_DETAIL();
-    document.getElementById('updateTime').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  });
-  es.addEventListener('task_removed',e=>{
-    const d=JSON.parse(e.data);allTasks=allTasks.filter(t=>(t.task||t).id!==d.task_id);
-    if(selectedId===d.task_id)selectedId=null;
-    document.getElementById('taskCount').textContent=allTasks.length;
-    RENDER_LIST();RENDER_DETAIL();
-  });
-  // Heartbeat: SSE comment events keep the connection alive (browser/proxy timeout)
-  es.addEventListener('ping',e=>{
-    dot.className='conn-dot conn-online';st.textContent='live';
-  });
-  es.onopen=()=>{dot.className='conn-dot conn-online';st.textContent='live'};
-  es.onerror=()=>{
-    // If we were connected and now offline, try reconnect
-    if(es.readyState===EventSource.CLOSED){
-      dot.className='conn-dot conn-offline';st.textContent='off';
-      setTimeout(SSE,2000);
-    }
-  };
+async function deleteTask(id){
+  if(deletePending[id]){
+    clearTimeout(deletePending[id]);
+    delete deletePending[id];
+    const result=await api('DELETE','/api/tasks/'+id+'/delete');
+    toast('Удалено: '+id,'ok');
+    return result;
+  }
+  // First click — arm
+  deletePending[id]=setTimeout(()=>{delete deletePending[id];render();},4000);
+  toast('Нажмите ещё раз для подтверждения удаления','');
+  render();
 }
-REFRESH();SSE();
+
+async function archiveTask(id){
+  const result=await api('POST','/api/tasks/'+id+'/archive');
+  toast('Архивировано: '+id,'ok');
+}
+
+async function rerunTask(id){
+  const result=await api('POST','/api/tasks/'+id+'/rerun');
+  toast('Сброшено для перезапуска: '+id,'ok');
+}
+
+async function resetTask(id){
+  const result=await api('POST','/api/tasks/'+id+'/reset');
+  toast('Сброшено: '+id,'ok');
+}
+
+async function archiveAllDone(){
+  const done=allTasks.filter(t=>t.status==='done');
+  if(!done.length){toast('Нет выполненных','');return}
+  for(const t of done)await archiveTask(t.id);
+  toast('Архивировано: '+done.length,'ok');
+}
+
+function render(){
+  let rcount=0;
+  let html='';
+  for(const p of allTasks){
+    const isDone=p.status==='done';
+    const color=COLOR[p.status]||'#64748b';
+    const pr=p.progress||{};
+    const pct=pr.pct||0;
+    const txt=pr.done+'/'+pr.total;
+    const hasRunning=pr.running>0;
+    if(p.status==='running')rcount++;
+    const open=expanded.has(p.id);
+    const arrow=open?'▾':'▸';
+
+    const pendingDelete=deletePending[p.id];
+
+    html+='<div class="card'+(hasRunning?' has-running':'')+(isDone?' all-done':'')+'">';
+    html+='<div class="ch" onclick="toggle(\''+esc(p.id)+'\')">';
+    html+='<span class="status-dot" style="background:'+color+'"></span>';
+    html+='<span class="ch-title">'+esc(p.title)+'</span>';
+    html+='<span class="ch-pid">'+esc(p.id)+'</span>';
+    html+='<span class="ch-progress">'+txt+'</span>';
+    html+='<span class="ch-toggle">'+arrow+'</span>';
+    html+='</div>';
+    html+='<div class="pb-wrap'+(p.status==='running'||hasRunning?' running':'')+'"><div class="pb-fill" style="width:'+pct+'%"></div></div>';
+
+    html+='<div class="body'+(open?' open':'')+'"><div class="pane">';
+
+    // Agent flow mini pipeline
+    if(p.agent_flow&&p.agent_flow.length){
+      html+='<div class="flow">';
+      const childMap={};
+      if(p.children)for(const c of p.children)childMap[c.assignee]=c;
+      for(let i=0;i<p.agent_flow.length;i++){
+        if(i>0)html+='<span class="flow-arrow">→</span>';
+        const agent=p.agent_flow[i];
+        const child=childMap[agent];
+        const st=child?child.status:'todo';
+        html+='<span class="flow-step '+st+'">';
+        html+='<span class="fs-dot" style="background:'+(COLOR[st]||'#64748b')+'"></span>';
+        html+='<span class="fs-name">'+esc(agent)+'</span>';
+        if(child&&st==='done')html+='<span style="color:#4ade80;font-size:11px">✓</span>';
+        html+='</span>';
+      }
+      html+='</div>';
+    }
+
+    // Agent detail rows
+    if(p.children&&p.children.length){
+      for(const c of p.children){
+        const cc=COLOR[c.status]||'#64748b';
+        const agent=c.assignee&&c.assignee.startsWith('@')?c.assignee:c.assignee||'—';
+        const taskTitle=c.title.replace(/^@\w+:\s*/,'');
+        const run=c.run;
+        const isRunningNow=c.status==='running';
+        if(isRunningNow)rcount++;
+
+        let timeStr='';
+        if(isRunningNow&&run&&run.started_at)timeStr=ago(run.started_at);
+        else if(c.status==='done'&&c.completed_at)timeStr='✓ '+ago(c.completed_at);
+        else if(c.status==='blocked'&&run&&run.started_at)timeStr=ago(run.started_at);
+
+        let hb='';
+        if(isRunningNow&&run){
+          const hbts=run.last_heartbeat_at||c.last_heartbeat_at;
+          if(hbts){
+            const secAgo=Math.floor(Date.now()/1000-hbts);
+            const hbColor=secAgo<30?'#22c55e':secAgo<120?'#f59e0b':'#ef4444';
+            hb='<span class="ag-heartbeat" style="background:'+hbColor+';animation:pulse '+(secAgo<30?'1.5s':'3s')+' infinite" title="heartbeat '+ago(hbts)+'"></span>';
+          }else hb='<span class="ag-heartbeat" style="background:#3f3f46" title="нет heartbeat"></span>';
+        }
+
+        let summary='';
+        if(run&&run.summary&&(c.status==='done'||c.status==='blocked')){
+          const s=run.summary;
+          summary='<span style="color:#71717a;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle" title="'+esc(s)+'">'+esc(s.length>40?s.slice(0,40)+'…':s)+'</span>';
+        }
+
+        html+='<div class="ag">';
+        html+='<span class="ag-dot'+(isRunningNow?' running-pulse':'')+'" style="background:'+cc+'"></span>';
+        html+='<span class="ag-name">'+esc(agent)+'</span>';
+        html+='<span class="ag-task">'+esc(taskTitle)+'</span>';
+        html+='<span class="ag-status ag-s-'+c.status+'">'+(LABEL[c.status]||c.status)+'</span>';
+        html+=hb;
+        if(timeStr)html+='<span class="ag-time">'+timeStr+'</span>';
+        if(summary)html+=summary;
+        if(isRunningNow&&run&&run.worker_pid)html+='<span style="color:#3f3f46;font-size:10px;font-family:monospace">pid:'+run.worker_pid+'</span>';
+        html+='</div>';
+      }
+    }else{
+      html+='<div style="color:#52525b;padding:4px 0;font-size:12px">Нет дочерних задач</div>';
+    }
+
+    // Action buttons row per card
+    html+='<div class="act-row">';
+    // Delete button
+    html+='<button class="btn btn-del'+(pendingDelete?' confirm':'')+'" onclick="deleteTask(\''+esc(p.id)+'\')" '+(pendingDelete?'title="Нажмите ещё раз для удаления"':'')+'>'+(pendingDelete?'Уверен?':'Удалить')+'</button>';
+    // Archive button
+    html+='<button class="btn btn-arch" onclick="archiveTask(\''+esc(p.id)+'\')">Архив</button>';
+    // Rerun button
+    html+='<button class="btn btn-run" onclick="rerunTask(\''+esc(p.id)+'\')">Перезапустить</button>';
+    // Reset button
+    html+='<button class="btn" onclick="resetTask(\''+esc(p.id)+'\')">Сброс</button>';
+    html+='</div>';
+
+    html+='</div></div></div>';
+  }
+  if(!allTasks.length){
+    html='<div class="empty">Нет активных pipeline-задач</div>';
+  }
+  app.innerHTML=html;
+  countBadge.textContent=allTasks.length;
+  const runTotal=allTasks.reduce((s,p)=>s+(p.progress?.running||0),0);
+  runningInfo.textContent=runTotal?'Выполняется: '+runTotal:'';
+  lastUpdate.textContent=fmtTime(Math.floor(Date.now()/1000));
+}
+
+window.toggle=function(id){
+  if(expanded.has(id))expanded.delete(id);else expanded.add(id);
+  render();
+};
+
+function connectSSE(){
+  const es=new EventSource('/api/events');
+  es.addEventListener('full_update',e=>{
+    try{
+      const data=JSON.parse(e.data);
+      if(!allTasks.length){
+        expanded=new Set();
+        for(const p of data)if(p.status==='running'||p.status==='ready'||p.status==='blocked')expanded.add(p.id);
+      }else{
+        const oldMap={};for(const t of allTasks)oldMap[t.id]=t.status;
+        for(const p of data){
+          if(p.status!=='done'&&oldMap[p.id]==='done')expanded.add(p.id);
+        }
+      }
+      allTasks=data;
+      // Clear delete pending for tasks no longer present
+      for(const id in deletePending){
+        if(!data.find(t=>t.id===id)){
+          clearTimeout(deletePending[id]);
+          delete deletePending[id];
+        }
+      }
+      render();
+    }catch(err){console.error(err)}
+  });
+  es.addEventListener('error',()=>{es.close();setTimeout(connectSSE,3000)});
+}
+connectSSE();
+
+fetch('/api/tasks').then(r=>r.json()).then(data=>{
+  expanded=new Set();
+  for(const p of data)if(p.status==='running'||p.status==='ready'||p.status==='blocked')expanded.add(p.id);
+  allTasks=data;render();
+}).catch(()=>{
+  app.innerHTML='<div class="empty">Ошибка подключения к серверу</div>';
+});
+
+function expandAll(){
+  for(const p of allTasks)expanded.add(p.id);
+  render();
+}
+function collapseAll(){
+  expanded=new Set();
+  render();
+}
 </script>
 </body>
 </html>
