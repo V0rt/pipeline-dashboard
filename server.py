@@ -3,6 +3,7 @@ Pipeline Dashboard — FastAPI server with SSE real-time updates.
 Wraps `hermes kanban --board pipeline` commands.
 """
 
+import argparse
 import asyncio
 import json
 import subprocess
@@ -137,7 +138,11 @@ async def index():
 
 def main():
     """Entry point for CLI."""
-    uvicorn.run("server:app", host="0.0.0.0", port=8800, reload=False)
+    parser = argparse.ArgumentParser(description="Pipeline Dashboard")
+    parser.add_argument("--port", type=int, default=8800, help="Port (default: 8800)")
+    parser.add_argument("--host", default="0.0.0.0", help="Host (default: 0.0.0.0)")
+    args = parser.parse_args()
+    uvicorn.run("server:app", host=args.host, port=args.port, reload=False)
 
 
 if __name__ == "__main__":
