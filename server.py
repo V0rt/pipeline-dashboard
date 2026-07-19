@@ -224,6 +224,7 @@ def reassign_task(task_id, assignee):
     try:
         cur.execute("UPDATE tasks SET assignee=? WHERE id=?", (assignee, task_id))
         conn.commit()
+        _notify_clients()
         return {"ok": True, "action": "reassigned", "id": task_id, "assignee": assignee}
     except sqlite3.Error as e:
         return {"ok": False, "error": str(e)}
