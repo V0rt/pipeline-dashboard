@@ -15,8 +15,11 @@
   .badge{background:#27272a;color:#a1a1aa;border-radius:999px;padding:2px 10px;font-size:13px}
   #lastUpdate{margin-left:auto;color:#52525b;font-size:12px}
   .subhead{color:#52525b;font-size:12px}
-  .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;
-            margin-right:6px;vertical-align:middle;animation:pulse 2s infinite}
+  .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+            margin-right:6px;vertical-align:middle;transition:background .3s}
+  .live-dot.alive{background:#22c55e;animation:pulse 2s infinite}
+  .live-dot.dead{background:#ef4444;animation:pulse 4s infinite}
+  .live-dot.reconnecting{background:#f59e0b;animation:pulse .5s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
   .hdr-actions{display:flex;gap:6px;align-items:center}
@@ -36,7 +39,18 @@
 
   main{max-width:820px;margin:0 auto;padding:12px 16px}
 
-  .card{background:#18181b;border:1px solid #27272a;border-radius:10px;margin-bottom:10px;overflow:hidden}
+  /* Section groups */
+  .sec{margin-bottom:14px}
+  .sec-hdr{display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;user-select:none;
+           color:#71717a;font-size:13px;font-weight:500}
+  .sec-hdr:hover{color:#a1a1aa}
+  .sec-toggle{width:14px;text-align:center;font-size:12px;color:#52525b;flex-shrink:0}
+  .sec-icon{width:18px;text-align:center;flex-shrink:0;font-size:14px}
+  .sec-label{flex:1}
+  .sec-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .sec-body.open{max-height:20000px}
+
+  .card{background:#18181b;border:1px solid #27272a;border-radius:10px;margin-bottom:8px;overflow:hidden}
   .card.has-running{border-color:#f59e0b55}
   .card.all-done{opacity:.5}
   .card.all-done:hover{opacity:.8}
@@ -59,10 +73,8 @@
 
   .pane{padding:0 14px 12px}
 
-  /* action toolbar per card */
   .act-row{display:flex;gap:5px;padding:6px 0 8px;flex-wrap:wrap;border-top:1px solid #1f1f23;margin-top:6px}
 
-  /* agent flow row */
   .flow{display:flex;align-items:center;gap:6px;padding:6px 9px;margin-bottom:6px;border-radius:6px;
         background:#131316;font-size:12px;flex-wrap:wrap}
   .flow-step{display:flex;align-items:center;gap:4px}
@@ -106,7 +118,7 @@
 </head>
 <body>
 <header>
-  <span class="live-dot"></span>
+  <span class="live-dot" id="liveDot"></span>
   <h1>Pipeline</h1>
   <span class="badge" id="countBadge">0</span>
   <span class="subhead" id="runningInfo"></span>
@@ -126,8 +138,10 @@ const app=document.getElementById('app');
 const countBadge=document.getElementById('countBadge');
 const runningInfo=document.getElementById('runningInfo');
 const lastUpdate=document.getElementById('lastUpdate');
-let allTasks=[],expanded=new Set();
-let deletePending={}; // task_id -> setTimeout id
+const liveDot=document.getElementById('liveDot');
+let allTasks=[],expanded=new Set(),secExpanded=new Set(['running','ready','blocked','todo','triage']);
+let deletePending={};
+let sseRetries=0;
 
 function esc(s){return(''+s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]||c)}
 
@@ -171,7 +185,6 @@ async function deleteTask(id){
     toast('Удалено: '+id,'ok');
     return result;
   }
-  // First click — arm
   deletePending[id]=setTimeout(()=>{delete deletePending[id];render();},4000);
   toast('Нажмите ещё раз для подтверждения удаления','');
   render();
@@ -200,111 +213,125 @@ async function archiveAllDone(){
 }
 
 function render(){
+  // Group by status
+  const groups={running:[],ready:[],blocked:[],todo:[],triage:[],done:[],archived:[]};
+  for(const p of allTasks){const g=groups[p.status];if(g)g.push(p);else groups.todo.push(p);}
+  const groupOrder=['running','ready','blocked','todo','triage','done','archived'];
+  const groupLabels={running:'Выполняется',ready:'Готовы',blocked:'Заблокированы',todo:'В очереди',triage:'Triage',done:'Выполнены',archived:'Архив'};
+  const groupIcons={running:'▶',ready:'○',blocked:'✕',todo:'○',triage:'△',done:'✓',archived:'∎'};
+
   let rcount=0;
   let html='';
-  for(const p of allTasks){
-    const isDone=p.status==='done';
-    const color=COLOR[p.status]||'#64748b';
-    const pr=p.progress||{};
-    const pct=pr.pct||0;
-    const txt=pr.done+'/'+pr.total;
-    const hasRunning=pr.running>0;
-    if(p.status==='running')rcount++;
-    const open=expanded.has(p.id);
-    const arrow=open?'▾':'▸';
+  for(const g of groupOrder){
+    const tasks=groups[g];
+    if(!tasks.length)continue;
+    const secOpen=secExpanded.has(g);
+    html+='<div class="sec"><div class="sec-hdr" onclick="toggleSec(\''+g+'\')">';
+    html+='<span class="sec-toggle">'+(secOpen?'▾':'▸')+'</span>';
+    html+='<span class="sec-icon" style="color:'+COLOR[g]+'">'+groupIcons[g]+'</span>';
+    html+='<span class="sec-label">'+groupLabels[g]+'</span>';
+    html+='<span class="badge">'+tasks.length+'</span>';
+    html+='</div><div class="sec-body'+(secOpen?' open':'')+'">';
+    for(const p of tasks){
+      const isDone=p.status==='done';
+      const color=COLOR[p.status]||'#64748b';
+      const pr=p.progress||{};
+      const pct=pr.pct||0;
+      const txt=pr.done+'/'+pr.total;
+      const hasRunning=pr.running>0;
+      if(p.status==='running')rcount++;
+      const open=expanded.has(p.id);
+      const arrow=open?'▾':'▸';
+      const pendingDelete=deletePending[p.id];
 
-    const pendingDelete=deletePending[p.id];
-
-    html+='<div class="card'+(hasRunning?' has-running':'')+(isDone?' all-done':'')+'">';
-    html+='<div class="ch" onclick="toggle(\''+esc(p.id)+'\')">';
-    html+='<span class="status-dot" style="background:'+color+'"></span>';
-    html+='<span class="ch-title">'+esc(p.title)+'</span>';
-    html+='<span class="ch-pid">'+esc(p.id)+'</span>';
-    html+='<span class="ch-progress">'+txt+'</span>';
-    html+='<span class="ch-toggle">'+arrow+'</span>';
-    html+='</div>';
-    html+='<div class="pb-wrap'+(p.status==='running'||hasRunning?' running':'')+'"><div class="pb-fill" style="width:'+pct+'%"></div></div>';
-
-    html+='<div class="body'+(open?' open':'')+'"><div class="pane">';
-
-    // Agent flow mini pipeline
-    if(p.agent_flow&&p.agent_flow.length){
-      html+='<div class="flow">';
-      const childMap={};
-      if(p.children)for(const c of p.children)childMap[c.assignee]=c;
-      for(let i=0;i<p.agent_flow.length;i++){
-        if(i>0)html+='<span class="flow-arrow">→</span>';
-        const agent=p.agent_flow[i];
-        const child=childMap[agent];
-        const st=child?child.status:'todo';
-        html+='<span class="flow-step '+st+'">';
-        html+='<span class="fs-dot" style="background:'+(COLOR[st]||'#64748b')+'"></span>';
-        html+='<span class="fs-name">'+esc(agent)+'</span>';
-        if(child&&st==='done')html+='<span style="color:#4ade80;font-size:11px">✓</span>';
-        html+='</span>';
-      }
+      html+='<div class="card'+(hasRunning?' has-running':'')+(isDone?' all-done':'')+'">';
+      html+='<div class="ch" onclick="toggle(\''+esc(p.id)+'\')">';
+      html+='<span class="status-dot" style="background:'+color+'\"></span>';
+      html+='<span class="ch-title">'+esc(p.title)+'</span>';
+      html+='<span class="ch-pid">'+esc(p.id)+'</span>';
+      html+='<span class="ch-progress">'+txt+'</span>';
+      html+='<span class="ch-toggle">'+arrow+'</span>';
       html+='</div>';
-    }
+      html+='<div class="pb-wrap'+(p.status==='running'||hasRunning?' running':'')+'"><div class="pb-fill" style="width:'+pct+'%"></div></div>';
 
-    // Agent detail rows
-    if(p.children&&p.children.length){
-      for(const c of p.children){
-        const cc=COLOR[c.status]||'#64748b';
-        const agent=c.assignee&&c.assignee.startsWith('@')?c.assignee:c.assignee||'—';
-        const taskTitle=c.title.replace(/^@\w+:\s*/,'');
-        const run=c.run;
-        const isRunningNow=c.status==='running';
-        if(isRunningNow)rcount++;
+      html+='<div class="body'+(open?' open':'')+'"><div class="pane">';
 
-        let timeStr='';
-        if(isRunningNow&&run&&run.started_at)timeStr=ago(run.started_at);
-        else if(c.status==='done'&&c.completed_at)timeStr='✓ '+ago(c.completed_at);
-        else if(c.status==='blocked'&&run&&run.started_at)timeStr=ago(run.started_at);
-
-        let hb='';
-        if(isRunningNow&&run){
-          const hbts=run.last_heartbeat_at||c.last_heartbeat_at;
-          if(hbts){
-            const secAgo=Math.floor(Date.now()/1000-hbts);
-            const hbColor=secAgo<30?'#22c55e':secAgo<120?'#f59e0b':'#ef4444';
-            hb='<span class="ag-heartbeat" style="background:'+hbColor+';animation:pulse '+(secAgo<30?'1.5s':'3s')+' infinite" title="heartbeat '+ago(hbts)+'"></span>';
-          }else hb='<span class="ag-heartbeat" style="background:#3f3f46" title="нет heartbeat"></span>';
+      // Agent flow mini pipeline
+      if(p.agent_flow&&p.agent_flow.length){
+        html+='<div class="flow">';
+        const childMap={};
+        if(p.children)for(const c of p.children)childMap[c.assignee]=c;
+        for(let i=0;i<p.agent_flow.length;i++){
+          if(i>0)html+='<span class="flow-arrow">→</span>';
+          const agent=p.agent_flow[i];
+          const child=childMap[agent];
+          const st=child?child.status:'todo';
+          html+='<span class="flow-step '+st+'">';
+          html+='<span class="fs-dot" style="background:'+(COLOR[st]||'#64748b')+'\"></span>';
+          html+='<span class="fs-name">'+esc(agent)+'</span>';
+          if(child&&st==='done')html+='<span style="color:#4ade80;font-size:11px">✓</span>';
+          html+='</span>';
         }
-
-        let summary='';
-        if(run&&run.summary&&(c.status==='done'||c.status==='blocked')){
-          const s=run.summary;
-          summary='<span style="color:#71717a;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle" title="'+esc(s)+'">'+esc(s.length>40?s.slice(0,40)+'…':s)+'</span>';
-        }
-
-        html+='<div class="ag">';
-        html+='<span class="ag-dot'+(isRunningNow?' running-pulse':'')+'" style="background:'+cc+'"></span>';
-        html+='<span class="ag-name">'+esc(agent)+'</span>';
-        html+='<span class="ag-task">'+esc(taskTitle)+'</span>';
-        html+='<span class="ag-status ag-s-'+c.status+'">'+(LABEL[c.status]||c.status)+'</span>';
-        html+=hb;
-        if(timeStr)html+='<span class="ag-time">'+timeStr+'</span>';
-        if(summary)html+=summary;
-        if(isRunningNow&&run&&run.worker_pid)html+='<span style="color:#3f3f46;font-size:10px;font-family:monospace">pid:'+run.worker_pid+'</span>';
         html+='</div>';
       }
-    }else{
-      html+='<div style="color:#52525b;padding:4px 0;font-size:12px">Нет дочерних задач</div>';
+
+      // Agent detail rows
+      if(p.children&&p.children.length){
+        for(const c of p.children){
+          const cc=COLOR[c.status]||'#64748b';
+          const agent=c.assignee&&c.assignee.startsWith('@')?c.assignee:c.assignee||'—';
+          const taskTitle=c.title.replace(/^@\w+:\s*/,'');
+          const run=c.run;
+          const isRunningNow=c.status==='running';
+          if(isRunningNow)rcount++;
+
+          let timeStr='';
+          if(isRunningNow&&run&&run.started_at)timeStr=ago(run.started_at);
+          else if(c.status==='done'&&c.completed_at)timeStr='✓ '+ago(c.completed_at);
+          else if(c.status==='blocked'&&run&&run.started_at)timeStr=ago(run.started_at);
+
+          let hb='';
+          if(isRunningNow&&run){
+            const hbts=run.last_heartbeat_at||c.last_heartbeat_at;
+            if(hbts){
+              const secAgo=Math.floor(Date.now()/1000-hbts);
+              const hbColor=secAgo<30?'#22c55e':secAgo<120?'#f59e0b':'#ef4444';
+              hb='<span class="ag-heartbeat" style="background:'+hbColor+';animation:pulse '+(secAgo<30?'1.5s':'3s')+' infinite" title="heartbeat '+ago(hbts)+'"></span>';
+            }else hb='<span class="ag-heartbeat" style="background:#3f3f46" title="нет heartbeat"></span>';
+          }
+
+          let summary='';
+          if(run&&run.summary&&(c.status==='done'||c.status==='blocked')){
+            const s=run.summary;
+            summary='<span style="color:#71717a;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle" title="'+esc(s)+'">'+esc(s.length>40?s.slice(0,40)+'…':s)+'</span>';
+          }
+
+          html+='<div class="ag">';
+          html+='<span class="ag-dot'+(isRunningNow?' running-pulse':'')+'" style="background:'+cc+'\"></span>';
+          html+='<span class="ag-name">'+esc(agent)+'</span>';
+          html+='<span class="ag-task">'+esc(taskTitle)+'</span>';
+          html+='<span class="ag-status ag-s-'+c.status+'">'+(LABEL[c.status]||c.status)+'</span>';
+          html+=hb;
+          if(timeStr)html+='<span class="ag-time">'+timeStr+'</span>';
+          if(summary)html+=summary;
+          if(isRunningNow&&run&&run.worker_pid)html+='<span style="color:#3f3f46;font-size:10px;font-family:monospace">pid:'+run.worker_pid+'</span>';
+          html+='</div>';
+        }
+      }else{
+        html+='<div style="color:#52525b;padding:4px 0;font-size:12px">Нет дочерних задач</div>';
+      }
+
+      // Action buttons row per card
+      html+='<div class="act-row">';
+      html+='<button class="btn btn-del'+(pendingDelete?' confirm':'')+'" onclick="deleteTask(\''+esc(p.id)+'\')" '+(pendingDelete?'title="Нажмите ещё раз для удаления"':'')+'>'+(pendingDelete?'Уверен?':'Удалить')+'</button>';
+      html+='<button class="btn btn-arch" onclick="archiveTask(\''+esc(p.id)+'\')">Архив</button>';
+      html+='<button class="btn btn-run" onclick="rerunTask(\''+esc(p.id)+'\')">Перезапустить</button>';
+      html+='<button class="btn" onclick="resetTask(\''+esc(p.id)+'\')">Сброс</button>';
+      html+='</div>';
+
+      html+='</div></div></div>';
     }
-
-    // Action buttons row per card
-    html+='<div class="act-row">';
-    // Delete button
-    html+='<button class="btn btn-del'+(pendingDelete?' confirm':'')+'" onclick="deleteTask(\''+esc(p.id)+'\')" '+(pendingDelete?'title="Нажмите ещё раз для удаления"':'')+'>'+(pendingDelete?'Уверен?':'Удалить')+'</button>';
-    // Archive button
-    html+='<button class="btn btn-arch" onclick="archiveTask(\''+esc(p.id)+'\')">Архив</button>';
-    // Rerun button
-    html+='<button class="btn btn-run" onclick="rerunTask(\''+esc(p.id)+'\')">Перезапустить</button>';
-    // Reset button
-    html+='<button class="btn" onclick="resetTask(\''+esc(p.id)+'\')">Сброс</button>';
-    html+='</div>';
-
-    html+='</div></div></div>';
+    html+='</div></div>';
   }
   if(!allTasks.length){
     html='<div class="empty">Нет активных pipeline-задач</div>';
@@ -316,6 +343,12 @@ function render(){
   lastUpdate.textContent=fmtTime(Math.floor(Date.now()/1000));
 }
 
+// Toggle a section group
+window.toggleSec=function(g){
+  if(secExpanded.has(g))secExpanded.delete(g);else secExpanded.add(g);
+  render();
+};
+
 window.toggle=function(id){
   if(expanded.has(id))expanded.delete(id);else expanded.add(id);
   render();
@@ -323,9 +356,14 @@ window.toggle=function(id){
 
 function connectSSE(){
   const es=new EventSource('/api/events');
+  liveDot.className='live-dot alive';
+  sseRetries=0;
+
   es.addEventListener('full_update',e=>{
     try{
       const data=JSON.parse(e.data);
+      liveDot.className='live-dot alive';
+      sseRetries=0;
       if(!allTasks.length){
         expanded=new Set();
         for(const p of data)if(p.status==='running'||p.status==='ready'||p.status==='blocked')expanded.add(p.id);
@@ -333,10 +371,11 @@ function connectSSE(){
         const oldMap={};for(const t of allTasks)oldMap[t.id]=t.status;
         for(const p of data){
           if(p.status!=='done'&&oldMap[p.id]==='done')expanded.add(p.id);
+          // Auto-collapse done
+          if(p.status==='done')expanded.delete(p.id);
         }
       }
       allTasks=data;
-      // Clear delete pending for tasks no longer present
       for(const id in deletePending){
         if(!data.find(t=>t.id===id)){
           clearTimeout(deletePending[id]);
@@ -346,9 +385,29 @@ function connectSSE(){
       render();
     }catch(err){console.error(err)}
   });
-  es.addEventListener('error',()=>{es.close();setTimeout(connectSSE,3000)});
+
+  es.addEventListener('error',()=>{
+    es.close();
+    sseRetries++;
+    const delay=Math.min(3000*Math.pow(2,Math.min(sseRetries-1,4)),60000);
+    if(sseRetries<=3)liveDot.className='live-dot reconnecting';
+    else liveDot.className='live-dot dead';
+    if(sseRetries>10){
+      showToast('SSE отключён после '+sseRetries+' попыток','err');
+      return;
+    }
+    setTimeout(connectSSE,delay);
+  });
 }
 connectSSE();
+
+function showToast(msg,type){
+  const el=document.createElement('div');
+  el.className='toast '+(type||'ok');
+  el.innerHTML=msg+' <span onclick="this.parentElement.remove()">✕</span>';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),4000);
+}
 
 fetch('/api/tasks').then(r=>r.json()).then(data=>{
   expanded=new Set();
