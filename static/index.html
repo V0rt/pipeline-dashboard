@@ -179,7 +179,7 @@ async function REFRESH(){
 function SSE(){
   if(es)es.close();
   const dot=document.getElementById('connDot'),st=document.getElementById('connStatus');
-  dot.className='conn-dot conn-pending';st.textContent='...';
+  dot.className='conn-dot conn-pending';st.textContent='connecting...';
   es=new EventSource('/api/events');
   es.addEventListener('task_update',e=>{
     const d=JSON.parse(e.data);const idx=allTasks.findIndex(t=>(t.task||t).id===d.task_id);
@@ -194,8 +194,18 @@ function SSE(){
     document.getElementById('taskCount').textContent=allTasks.length;
     RENDER_LIST();RENDER_DETAIL();
   });
-  es.onopen=()=>{dot.className='conn-dot conn-online';st.textContent='live';REFRESH()};
-  es.onerror=()=>{dot.className='conn-dot conn-offline';st.textContent='off';setTimeout(SSE,2000)};
+  // Heartbeat: SSE comment events keep the connection alive (browser/proxy timeout)
+  es.addEventListener('ping',e=>{
+    dot.className='conn-dot conn-online';st.textContent='live';
+  });
+  es.onopen=()=>{dot.className='conn-dot conn-online';st.textContent='live'};
+  es.onerror=()=>{
+    // If we were connected and now offline, try reconnect
+    if(es.readyState===EventSource.CLOSED){
+      dot.className='conn-dot conn-offline';st.textContent='off';
+      setTimeout(SSE,2000);
+    }
+  };
 }
 REFRESH();SSE();
 </script>

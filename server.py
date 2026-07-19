@@ -131,6 +131,7 @@ async def event_stream(request: Request):
 
     async def event_generator():
         previous = {}
+        poll_count = 0
         while True:
             if await request.is_disconnected():
                 break
@@ -158,6 +159,10 @@ async def event_stream(request: Request):
                     })}
 
             previous = snapshot
+            poll_count += 1
+            # Heartbeat ping every ~3 polls (~6s) to keep connection alive
+            if poll_count % 3 == 0:
+                yield {"event": "ping", "data": json.dumps({"timestamp": datetime.now().isoformat()})}
             await asyncio.sleep(POLL_INTERVAL)
 
     return EventSourceResponse(event_generator())
