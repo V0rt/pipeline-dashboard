@@ -5,6 +5,7 @@ import socket
 import sqlite3
 import threading
 import time
+import re
 import urllib.parse
 
 KANBAN_DB = os.path.expanduser("~/.hermes/kanban/boards/pipeline/kanban.db")
@@ -92,7 +93,6 @@ def load_tree():
 
         # Parse agent flow from body if present
         if p.get("body"):
-            import re
             m = re.search(r'Агенты:\s*([^\n]+)', p["body"])
             if m:
                 p["agent_flow"] = [a.strip() for a in m.group(1).split("→")]
