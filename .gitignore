@@ -2,21 +2,19 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
-venv/
-*.env
-.env.local
+dist/
+build/
 
 # IDE
 .vscode/
 .idea/
 *.swp
-*.swo
+
+# Env
+.env
+.venv/
+venv/
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Project
-kanban.db
-*.db

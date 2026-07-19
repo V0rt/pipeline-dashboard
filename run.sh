@@ -5,7 +5,7 @@ set -e
 # Usage: ./run.sh              # start on :8800
 #        ./run.sh --port 8888  # custom port
 
-PORT="${2:-8800}"
+PORT="${1:-8800}"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 cd "$DIR"

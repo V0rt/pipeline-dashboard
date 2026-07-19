@@ -8,6 +8,7 @@ import html as html_module
 import json
 import subprocess
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import uvicorn
@@ -15,11 +16,33 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-app = FastAPI(title="Pipeline Dashboard", version="0.1.2")
+app = FastAPI(title="Pipeline Dashboard", version="0.1.3")
 
 BOARD = "pipeline"
 POLL_INTERVAL = 2.0  # seconds between polls
 HERMES_CMD = ["hermes", "kanban", "--board", BOARD]
+
+# ── Enriched data cache ─────────────────────────────────────────────────────
+
+_enriched_cache: list[dict] | None = None
+_enriched_cache_key: str | None = None
+
+
+def _build_cache_key(tasks: list[dict]) -> str:
+    """Build a cache key from the current task list IDs + titles."""
+    return json.dumps([{"id": t.get("id"), "title": t.get("title")} for t in tasks], sort_keys=True)
+
+
+def _get_enriched_cached(tasks: list[dict]) -> list[dict]:
+    """Return cached enriched data if the task list hasn't changed."""
+    global _enriched_cache, _enriched_cache_key
+    key = _build_cache_key(tasks)
+    if _enriched_cache is not None and _enriched_cache_key == key:
+        return _enriched_cache
+    enriched = _do_enrich_tasks(tasks)
+    _enriched_cache = enriched
+    _enriched_cache_key = key
+    return enriched
 
 
 def esc(s: str) -> str:
@@ -77,8 +100,8 @@ def enrich_task(detail: dict | None) -> dict | None:
     return detail
 
 
-def enrich_tasks(tasks: list[dict]) -> list[dict]:
-    """Enrich a list of task details (resolve child IDs)."""
+def _do_enrich_tasks(tasks: list[dict]) -> list[dict]:
+    """Enrich a list of task details (resolve child IDs) — no caching."""
     enriched = []
     for t in tasks:
         detail = show_task(t["id"])
@@ -96,7 +119,7 @@ def enrich_tasks(tasks: list[dict]) -> list[dict]:
 async def get_tasks():
     """Return all tasks with full details and resolved children."""
     tasks = list_tasks()
-    return JSONResponse(enrich_tasks(tasks))
+    return JSONResponse(_get_enriched_cached(tasks))
 
 
 @app.get("/api/events")
@@ -109,11 +132,9 @@ async def event_stream(request: Request):
             if await request.is_disconnected():
                 break
             tasks = list_tasks()
-            snapshot = {}
-            for t in tasks:
-                detail = enrich_task(show_task(t["id"]))
-                if detail:
-                    snapshot[t["id"]] = detail
+            # Use cached enrichment for the entire snapshot
+            enriched = _get_enriched_cached(tasks)
+            snapshot = {e["task"]["id"] if "task" in e and e["task"] else e.get("id"): e for e in enriched}
 
             for tid, data in snapshot.items():
                 prev = previous.get(tid)
@@ -143,12 +164,13 @@ async def event_stream(request: Request):
 async def refresh():
     """Force a full refresh of all tasks."""
     tasks = list_tasks()
-    return JSONResponse(enrich_tasks(tasks))
+    return JSONResponse(_get_enriched_cached(tasks))
 
 
 # ── Serve frontend ──────────────────────────────────────────────────────────
 
 
+_BASE_DIR = Path(__file__).resolve().parent
 INDEX_HTML: str | None = None
 
 
@@ -156,7 +178,7 @@ def load_index() -> str:
     """Load index.html once, cache in memory."""
     global INDEX_HTML
     if INDEX_HTML is None:
-        INDEX_HTML = open("static/index.html").read()
+        INDEX_HTML = (_BASE_DIR / "static" / "index.html").read_text()
     return INDEX_HTML
 
 
@@ -165,7 +187,7 @@ async def index():
     return HTMLResponse(
         load_index(),
         headers={
-            "Content-Security-Policy": "default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'",
+            "Content-Security-Policy": "default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'unsafe-inline' 'self'; img-src 'self' data:; connect-src 'self'",
             "Cache-Control": "no-cache, max-age=0",
         },
     )
@@ -173,7 +195,7 @@ async def index():
 
 @app.get("/favicon.ico")
 async def favicon():
-    return JSONResponse({"ok": True})
+    return HTMLResponse(status_code=204)
 
 
 def main():

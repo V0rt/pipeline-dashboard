@@ -29,7 +29,7 @@ The server wraps `hermes kanban --board pipeline` CLI commands and exposes:
 |----------|-------------|
 | `GET /api/tasks` | All tasks with full details |
 | `GET /api/events` | SSE stream — real-time task updates |
-| `GET /api/refresh` | Force full refresh |
+| `GET /api/refresh` | Force full refresh (cached) |
 
 ## Requirements
 
