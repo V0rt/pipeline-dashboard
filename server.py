@@ -15,7 +15,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-app = FastAPI(title="Pipeline Dashboard", version="0.1.0")
+app = FastAPI(title="Pipeline Dashboard", version="0.1.1")
 
 BOARD = "pipeline"
 POLL_INTERVAL = 1.5  # seconds between polls
@@ -52,21 +52,45 @@ def show_task(task_id: str) -> dict | None:
     return _kanban("show", task_id)
 
 
+def enrich_task(detail: dict | None) -> dict | None:
+    """Resolve child IDs → full child objects in a task detail."""
+    if not detail or "task" not in detail:
+        return detail
+    children = detail.get("children", [])
+    resolved = []
+    for c in children:
+        if isinstance(c, str):
+            child_detail = show_task(c)
+            if child_detail and "task" in child_detail:
+                resolved.append(child_detail["task"])
+            else:
+                resolved.append({"id": c, "title": c, "status": "unknown"})
+        elif isinstance(c, dict):
+            resolved.append(c)
+    detail["children"] = resolved
+    return detail
+
+
+def enrich_tasks(tasks: list[dict]) -> list[dict]:
+    """Enrich a list of task details (resolve child IDs)."""
+    enriched = []
+    for t in tasks:
+        detail = show_task(t["id"])
+        if detail:
+            enriched.append(enrich_task(detail))
+        else:
+            enriched.append({"task": t, "children": [], "parents": [], "comments": [], "events": []})
+    return enriched
+
+
 # ── API endpoints ────────────────────────────────────────────────────────────
 
 
 @app.get("/api/tasks")
 async def get_tasks():
-    """Return all tasks with full details (children, status)."""
+    """Return all tasks with full details and resolved children."""
     tasks = list_tasks()
-    enriched = []
-    for t in tasks:
-        detail = show_task(t["id"])
-        if detail:
-            enriched.append(detail)
-        else:
-            enriched.append({"task": t, "children": [], "parents": [], "comments": [], "events": []})
-    return JSONResponse(enriched)
+    return JSONResponse(enrich_tasks(tasks))
 
 
 @app.get("/api/events")
@@ -82,7 +106,7 @@ async def event_stream(request: Request):
             # Build a snapshot keyed by id
             snapshot = {}
             for t in tasks:
-                detail = show_task(t["id"])
+                detail = enrich_task(show_task(t["id"]))
                 if detail:
                     snapshot[t["id"]] = detail
 
@@ -118,12 +142,7 @@ async def event_stream(request: Request):
 async def refresh():
     """Force a full refresh of all tasks."""
     tasks = list_tasks()
-    enriched = []
-    for t in tasks:
-        detail = show_task(t["id"])
-        if detail:
-            enriched.append(detail)
-    return JSONResponse(enriched)
+    return JSONResponse(enrich_tasks(tasks))
 
 
 # ── Serve frontend ──────────────────────────────────────────────────────────
