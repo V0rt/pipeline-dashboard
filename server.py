@@ -1,10 +1,10 @@
-"""
-Pipeline Dashboard — FastAPI server with SSE real-time updates.
+"""Pipeline Dashboard — FastAPI server with SSE real-time updates.
 Wraps `hermes kanban --board pipeline` commands.
 """
 
 import argparse
 import asyncio
+import html as html_module
 import json
 import subprocess
 from datetime import datetime
@@ -15,11 +15,17 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-app = FastAPI(title="Pipeline Dashboard", version="0.1.1")
+app = FastAPI(title="Pipeline Dashboard", version="0.1.2")
 
 BOARD = "pipeline"
-POLL_INTERVAL = 1.5  # seconds between polls
+POLL_INTERVAL = 2.0  # seconds between polls
 HERMES_CMD = ["hermes", "kanban", "--board", BOARD]
+
+
+def esc(s: str) -> str:
+    """HTML-escape a string (XSS guard)."""
+    return html_module.escape(str(s), quote=True)
+
 
 # ── Kanban CLI helpers ──────────────────────────────────────────────────────
 
@@ -103,14 +109,12 @@ async def event_stream(request: Request):
             if await request.is_disconnected():
                 break
             tasks = list_tasks()
-            # Build a snapshot keyed by id
             snapshot = {}
             for t in tasks:
                 detail = enrich_task(show_task(t["id"]))
                 if detail:
                     snapshot[t["id"]] = detail
 
-            # Detect changes
             for tid, data in snapshot.items():
                 prev = previous.get(tid)
                 if prev != data:
@@ -122,15 +126,12 @@ async def event_stream(request: Request):
                     })
                     yield {"event": "task_update", "data": event_data}
 
-            # Detect deletions
             for tid in list(previous.keys()):
                 if tid not in snapshot:
-                    event_data = json.dumps({
-                        "type": "task_removed",
-                        "task_id": tid,
+                    yield {"event": "task_removed", "data": json.dumps({
+                        "type": "task_removed", "task_id": tid,
                         "timestamp": datetime.now().isoformat(),
-                    })
-                    yield {"event": "task_removed", "data": event_data}
+                    })}
 
             previous = snapshot
             await asyncio.sleep(POLL_INTERVAL)
@@ -148,10 +149,31 @@ async def refresh():
 # ── Serve frontend ──────────────────────────────────────────────────────────
 
 
+INDEX_HTML: str | None = None
+
+
+def load_index() -> str:
+    """Load index.html once, cache in memory."""
+    global INDEX_HTML
+    if INDEX_HTML is None:
+        INDEX_HTML = open("static/index.html").read()
+    return INDEX_HTML
+
+
 @app.get("/")
 async def index():
-    with open("static/index.html") as f:
-        return HTMLResponse(f.read())
+    return HTMLResponse(
+        load_index(),
+        headers={
+            "Content-Security-Policy": "default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'",
+            "Cache-Control": "no-cache, max-age=0",
+        },
+    )
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    return JSONResponse({"ok": True})
 
 
 def main():
