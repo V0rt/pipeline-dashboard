@@ -29,17 +29,16 @@
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);text-align:center;gap:10px}
 .empty-state .icon{font-size:42px;opacity:.4}.empty-state h3{font-size:16px;color:var(--text);font-weight:500}.empty-state p{font-size:13px;max-width:360px}
 .pipeline-detail h2{font-size:16px;font-weight:600;margin-bottom:1px;display:flex;align-items:center;gap:8px}.pipeline-detail .subtitle{font-size:11px;color:var(--text-dim);margin-bottom:14px}
-.agent-flow{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:18px}
-.agent-card{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;transition:all .3s;animation:fadeIn .3s ease}
+.agent-flow{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:14px}
+.agent-card{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;transition:all .3s;animation:fadeIn .3s ease;font-size:11px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.agent-card .icon{font-size:13px;width:18px;text-align:center}.agent-card .info{display:flex;flex-direction:column}.agent-card .name{font-size:11px;font-weight:600;line-height:1.3}.agent-card .status-label{font-size:10px;font-weight:500;line-height:1.2}.agent-card .duration{font-size:9px;color:var(--text-dim);line-height:1}
-.agent-card.s-ready{border-color:var(--border)}.agent-card.s-ready .status-label{color:var(--text-dim)}
+.agent-card .icon{font-size:12px;width:16px;text-align:center}.agent-card .info{display:flex;align-items:center;gap:4px}.agent-card .name{font-weight:600;line-height:1.2}.agent-card .agent-stage{font-size:9px;color:var(--text-dim);opacity:.6;margin-left:1px}.agent-card .status-label{font-size:10px;font-weight:500;line-height:1.2;margin-left:2px}
+.agent-card.s-ready{border-color:var(--border);opacity:.7}.agent-card.s-ready .status-label{color:var(--text-dim)}
 .agent-card.s-running{border-color:var(--blue);box-shadow:0 0 6px rgba(108,182,255,.12)}.agent-card.s-running .status-label{color:var(--blue)}
 .agent-card.s-done{border-color:var(--green)}.agent-card.s-done .status-label{color:var(--green)}
 .agent-card.s-blocked{border-color:var(--orange)}.agent-card.s-blocked .status-label{color:var(--orange)}
 .agent-card.s-crashed{border-color:var(--red)}.agent-card.s-crashed .status-label{color:var(--red)}
-.agent-card .task-desc{font-size:9px;color:var(--text-dim);line-height:1.3;margin-top:2px;word-break:break-word;grid-column:span 2;white-space:pre-wrap}
-.agent-arrow{color:var(--text-dim);font-size:14px;opacity:.5}
+.agent-arrow{color:var(--text-dim);font-size:12px;opacity:.4}
 
 /* Horizontal kanban rows */
 .kanban-rows{display:flex;flex-direction:column;gap:6px;margin-top:14px}
@@ -53,7 +52,7 @@
 .kanban-row.row-done .row-label{color:var(--green);background:#0f2a1a}
 .kanban-row.row-crashed .row-label{color:var(--red);background:#2a0f0f}
 .kanban-card{display:inline-flex;align-items:flex-start;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;animation:fadeIn .3s ease}
-.kanban-card .card-icon{font-size:11px;margin-top:1px}.kanban-card .card-content{display:flex;flex-direction:column;gap:1px;max-width:280px}.kanban-card .card-title{font-weight:500;word-break:break-word;line-height:1.3;white-space:pre-wrap}.kanban-card .card-meta{font-size:8px;color:var(--text-dim)}
+.kanban-card .card-icon{font-size:11px;margin-top:1px}.kanban-card .card-content{display:flex;flex-direction:column;gap:1px;max-width:260px}.kanban-card .card-title{font-weight:500;word-break:break-word;line-height:1.3;white-space:pre-wrap;max-height:42px;overflow:hidden}.kanban-card .card-meta{font-size:8px;color:var(--text-dim)}
 .kanban-row .row-empty{font-size:9px;color:var(--text-dim);padding:4px 8px;opacity:.5}
 
 .findings{margin-top:14px}.findings h3{font-size:11px;margin-bottom:6px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}.findings .finding{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 9px;margin-bottom:3px;font-size:11px;line-height:1.4}
@@ -98,6 +97,8 @@ const SL_LONG=s=>s==='ready'?'Ready':s==='running'?'Running':s==='done'?'Done':s
 const AGENT_ICON=t=>{const m=(t+'').match(/@(\w+)/);if(!m)return'⬡';const map={finder:'🔍',analyst:'📊',architect:'🏗️',planner:'📋',coder:'💻',reviewer:'👁️',security:'🛡️',integration:'🔗',tester:'🧪',documenter:'📝'};return map[m[1]]||'⚡'};
 // Extract agent-specific task from body (falls back to title after agent name)
 const AGENT_TASK=ch=>{if(ch.body)return ch.body;return(ch.title||'').split(':').slice(1).join(':').trim()};
+// Extract agent stage name (finder, fixer, etc.) from title
+const AGENT_STAGE=ch=>{const t=ch.title||'';const m=t.match(/@(\w+)/);if(m)return m[1];return(ch.body||'').match(/Этап:\s*(\w+)/)?.[1]||''};
 function FMT(t){if(!t)return'';const d=new Date(t*1000);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
 function DUR(c){if(c.status!=='done')return'';const s=c.started_at||c.created_at;const e=c.completed_at;if(!s||!e)return'';const sec=(e-s);return sec<60?sec+'s':Math.round(sec/60)+'m'}
 function PIPES(){return allTasks.filter(t=>(t.children||[]).length>0).sort((a,b)=>(b.task||b).created_at-(a.task||a).created_at)}
@@ -139,7 +140,9 @@ function RENDER_DETAIL(){
     const sc='s-'+(ch.status||'ready');
     const icon=AGENT_ICON(ch.title||'');
     const label=(ch.title||ch.id).split(':')[0];
-    flow+=`<div class="agent-card ${sc}"><div class="icon">${icon}</div><div class="info"><div class="name">${esc(label)}</div><div class="status-label">${SL(ch.status)} ${SL_LONG(ch.status)}</div><div class="duration">${FMT(ch.started_at)||DUR(ch)||''}</div></div><div class="task-desc">${esc(AGENT_TASK(ch))}</div></div>`;
+    const stage=AGENT_STAGE(ch);
+    const dur=DUR(ch);
+    flow+=`<div class="agent-card ${sc}"><span class="icon">${icon}</span><div class="info"><span class="name">${esc(label)}</span>${stage?`<span class="agent-stage">${esc(stage)}</span>`:''}<span class="status-label">${SL(ch.status)}</span></div>${dur?`<span style="font-size:9px;color:var(--text-dim);margin-left:2px">${esc(dur)}</span>`:''}</div>`;
     if(i<ordered.length-1&&ordered[i+1])flow+='<div class="agent-arrow">→</div>';
   });
   flow+='</div>';
@@ -149,7 +152,7 @@ function RENDER_DETAIL(){
   cols.forEach(col=>{
     const cards=c.filter(ch=>ch.status===col);
     board+=`<div class="kanban-row row-${col}"><div class="row-label"><span>${col}</span><span class="count">${cards.length}</span></div><div class="row-cards">${
-      cards.length?cards.map(ch=>`<div class="kanban-card"><span class="card-icon">${AGENT_ICON(ch.title||'')}</span><div class="card-content"><div class="card-title">${esc(AGENT_TASK(ch))}</div><span class="card-meta">${FMT(ch.started_at)?esc(FMT(ch.started_at)):''}${DUR(ch)?' · '+esc(DUR(ch)):''}</span></div></div>`).join(''):'<span class="row-empty">—</span>'
+      cards.length?cards.map(ch=>`<div class="kanban-card"><span class="card-icon">${AGENT_ICON(ch.title||'')}</span><div class="card-content"><div class="card-title">${esc(AGENT_TASK(ch))}</div><span class="card-meta">${AGENT_STAGE(ch)?esc(AGENT_STAGE(ch))+' · ':''}${FMT(ch.started_at)?esc(FMT(ch.started_at)):''}${DUR(ch)?' · '+esc(DUR(ch)):''}</span></div></div>`).join(''):'<span class="row-empty">—</span>'
     }</div></div>`;
   });
   board+='</div>';
