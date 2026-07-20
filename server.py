@@ -256,12 +256,14 @@ class SSEHandler(http.server.BaseHTTPRequestHandler):
     def _serve_static(self, path):
         if path == "/" or path == "":
             path = "/index.html"
-        static_dir = os.path.join(os.path.dirname(__file__), "static")
-        filepath = os.path.normpath(os.path.join(static_dir, path.lstrip("/")))
-        if not filepath.startswith(static_dir):
-            self._send_json(403, {"error": "Forbidden"})
-            return
-        if not os.path.isfile(filepath):
+        # Try static/ dir first, then project root for assets like screenshot.png
+        project_dir = os.path.dirname(__file__)
+        static_dir = os.path.join(project_dir, "static")
+        for base_dir in (static_dir, project_dir):
+            filepath = os.path.normpath(os.path.join(base_dir, path.lstrip("/")))
+            if filepath.startswith(base_dir) and os.path.isfile(filepath):
+                break
+        else:
             self._send_json(404, {"error": "Not found"})
             return
         ext = os.path.splitext(filepath)[1]
@@ -269,6 +271,11 @@ class SSEHandler(http.server.BaseHTTPRequestHandler):
             ".html": "text/html; charset=utf-8",
             ".js": "application/javascript; charset=utf-8",
             ".css": "text/css; charset=utf-8",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".svg": "image/svg+xml",
+            ".ico": "image/x-icon",
         }.get(ext, "application/octet-stream")
         with open(filepath, "rb") as f:
             data = f.read()
