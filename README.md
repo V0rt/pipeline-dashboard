@@ -1,114 +1,102 @@
 # Pipeline Dashboard
 
 Real-time web dashboard for [Hermes Pipeline Plugin](https://hermes-agent.nousresearch.com/docs).
-Shows agent states, kanban tasks, and pipeline flow — updated live via SSE.
+Shows pipeline tasks, agent flows, and statuses — updated live via SSE.
 
 ![Pipeline Dashboard screenshot](./screenshot.png)
 
 ## Quick Start
 
+Сервер на чистом Python stdlib — ноль внешних зависимостей.
+
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python3 server.py
+cd ~/git/pipeline-dashboard
+hermes kanban boards create pipeline   # only once
+python3 server.py                       # слушает 0.0.0.0:8800
 ```
 
-Open **http://localhost:8800**
+Открыть **http://localhost:8800**
 
 ## Features
 
-- **Pipeline list** — sidebar with all 🔷 Pipeline runs, agent progress bars
-- **Agent flow** — visual pipeline showing agents in sequence (🔍 → 🔧 → 👁 → 🧪)
-- **Kanban board** — 6 columns: Todo, Ready, Running, Blocked, Done, Crashed
-- **Real-time updates** — SSE pushes task changes to the browser with 2s polling
-- **Dark theme** — matches the terminal dashboard aesthetic
-- **Cached enrichment** — child task resolution cached; invalidates on status change
-- **Heartbeat** — SSE `ping` events every 6s prevent connection drops
+- **Pipeline groups** — tasks grouped by status: Выполняется, Готовы, Заблокированы, В очереди, Выполнены, Архив
+- **Progress bars** — done/total для каждого пайплайна, анимированные для running
+- **Agent flow** — визуальная цепочка агентов в порядке pipeline (finder → analyst → coder → ...)
+- **Auto-expand** — активные задачи (running/ready/blocked) автоматически развёрнуты
+- **Auto-collapse** — выполненные задачи сворачиваются
+- **Real-time SSE** — `/api/events` присылает `full_update` при любых изменениях
+- **Actions** — Удалить (с двойным подтверждением), Архив, Перезапустить, Сброс
+- **Dark theme** — минималистичный тёмный UI
+- **Heartbeat** — ping каждые 6s, при reconnect экспоненциальный backoff
 
 ## Architecture
 
 ```
-┌─────────────┐     SSE /api/events     ┌──────────────┐
-│  Hermes CLI  │ ←───────poll─────────→  │  Dashboard   │
-│  kanban list │     every 2 seconds     │  Server      │
-│  kanban show │                         │  FastAPI     │
-└─────────────┘                         └──────┬───────┘
-                                               │
-                                    GET /  → index.html
-                                    GET /api/tasks     → JSON
-                                    GET /api/refresh   → JSON (cached)
-                                    GET /api/events    → SSE stream
-                                    GET /favicon.ico   → 204
+kanban.db ──sqlite3──→ server.py ──SSE──→ index.html
+  (read-only)            ↑
+                    Python stdlib:
+                    http.server + sqlite3
+                    ни одного subprocess
 ```
-
-### Caching
-
-The server caches enriched task data (resolved child objects)
-in memory. The cache key includes each task's **id + title + status**,
-so any status change invalidates the cache and triggers an SSE update.
 
 ## API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `GET /` | HTML | Dashboard SPA (dark theme kanban) |
-| `GET /api/tasks` | JSON | All tasks with full details, resolved children |
-| `GET /api/refresh` | JSON | Force refresh (cached, ~0.3s) |
-| `GET /api/events` | SSE | Real-time event stream: `task_update`, `task_removed`, `ping` |
-| `GET /favicon.ico` | 204 | No favicon |
+| `GET /` | HTML | Dashboard SPA |
+| `GET /api/tasks` | JSON | Все pipeline-задачи с детьми и прогрессом |
+| `GET /api/events` | SSE | Real-time поток: только `full_update` |
+| `POST /api/tasks/:id/archive` | JSON | Архивировать задачу |
+| `POST /api/tasks/:id/rerun` | JSON | Сбросить в ready для перезапуска |
+| `POST /api/tasks/:id/reset` | JSON | Полный сброс (удалить run из task_runs) |
+| `DELETE /api/tasks/:id/delete` | JSON | Удалить задачу (с детьми) |
 
 ### SSE Events
 
-```json
-// task_update — sent when a task is created or changes
-event: task_update
-data: {"type":"task_update","task_id":"t_xxxx","data":{...},"timestamp":"..."}
+Единственное событие: `full_update`. Приходит после любого изменения.
 
-// task_removed — sent when a task is deleted
-event: task_removed
-data: {"type":"task_removed","task_id":"t_xxxx","timestamp":"..."}
+```
+event: full_update
+data: [{"id":"t_xxx","title":"🔷 Пайплайн: ...","status":"running",...}, ...]
+```
 
-// ping — heartbeat every 6s to keep connection alive
+Пинг каждые 6 секунд:
+
+```
 event: ping
-data: {"timestamp":"..."}
+data: {"timestamp": "..."}
 ```
 
 ## Requirements
 
 - Python 3.11+
-- `fastapi`, `uvicorn`, `sse-starlette` (see `requirements.txt`)
-- `hermes` CLI with `kanban` subcommand
-- Pipeline Plugin with `pipeline` board created
+- Hermes со включённым Pipeline Plugin
+- Созданный kanban board `pipeline`
 
 ## Configuration
 
-| Argument | Default | Description |
+Переменные окружения:
+
+| Variable | Default | Description |
 |----------|---------|-------------|
-| `--port` | 8800 | HTTP port |
-| `--host` | 0.0.0.0 | Listen address |
+| `HOST` | `0.0.0.0` | IP для привязки |
+| `PORT` | `8800` | HTTP порт |
 
 ```bash
-python3 server.py --port 8888 --host 127.0.0.1
-```
-
-Or via run script:
-
-```bash
-./run.sh          # :8800
-./run.sh 8888     # :8888
+HOST=127.0.0.1 PORT=8801 python3 server.py
 ```
 
 ## Project Structure
 
 ```
 pipeline-dashboard/
-├── server.py              # FastAPI backend + SSE event stream
+├── server.py              # Backend: http.Server + sqlite3 + SSE
 ├── static/
-│   └── index.html         # SPA kanban dashboard (vanilla JS)
-├── AGENTS.md              # Hermes agent installation guide
+│   └── index.html         # SPA dashboard (vanilla JS, ~425 строк)
+├── AGENTS.md              # Hermes agent guide
 ├── README.md              # This file
-├── requirements.txt
+├── screenshot.png         # Скриншот дашборда
+├── requirements.txt       # (пустой — ноль зависимостей)
 ├── .gitignore
 ├── pyproject.toml
 ├── .github/workflows/ci.yml
@@ -117,8 +105,8 @@ pipeline-dashboard/
 
 ## Notes
 
-- The `pipeline` kanban board must exist before data appears.
-  Run `hermes kanban boards create pipeline` if needed.
-- Enriched task data is cached in-memory (auto-invalidated on task list change).
-- CSP headers: `default-src 'self'` with `'unsafe-inline'` for inline scripts.
-- Task statuses tracked: `todo`, `ready`, `running`, `blocked`, `done`, `crashed`.
+- Прямое чтение `~/.hermes/kanban/boards/pipeline/kanban.db` через `sqlite3`
+- Никаких subprocess вызовов — только SELECT
+- Транзакции read-only: `BEGIN DEFERRED`, закрываются в `finally`
+- CSP: `default-src 'self' 'unsafe-inline'`
+- Статусы: `triage`, `todo`, `ready`, `running`, `blocked`, `done`, `archived`
