@@ -73,6 +73,20 @@ data: {"timestamp": "..."}
 - Hermes со включённым Pipeline Plugin
 - Созданный kanban board `pipeline`
 
+## Auto-start with systemd
+
+```bash
+# Установить и запустить
+mkdir -p ~/.config/systemd/user
+cp contrib/pipeline-dashboard.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now pipeline-dashboard
+
+# Проверить
+systemctl --user status pipeline-dashboard
+journalctl --user -u pipeline-dashboard -f
+```
+
 ## Configuration
 
 Переменные окружения:
@@ -93,6 +107,8 @@ pipeline-dashboard/
 ├── server.py              # Backend: http.Server + sqlite3 + SSE
 ├── static/
 │   └── index.html         # SPA dashboard (vanilla JS, ~425 строк)
+├── contrib/
+│   └── pipeline-dashboard.service  # systemd user unit
 ├── AGENTS.md              # Hermes agent guide
 ├── README.md              # This file
 ├── screenshot.png         # Скриншот дашборда
