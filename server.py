@@ -12,10 +12,9 @@ KANBAN_DB = os.path.expanduser("~/.hermes/kanban/boards/pipeline/kanban.db")
 PORT = int(os.environ.get("PORT", 8800))
 HOST = os.environ.get("HOST", "0.0.0.0")
 
-# Global broadcast: set of (wfile, lock) tuples for active SSE clients
+# Global broadcast: set of (wfile, lock, wake_event) tuples for active SSE clients
 _sse_clients: set[tuple] = set()
 _sse_lock = threading.Lock()
-_sse_event = threading.Event()  # event-driven: set() on DB change, clear() after broadcast
 
 STATUS_LABELS = {"triage": "Triage", "todo": "Todo", "ready": "Ready", "running": "Running",
                  "blocked": "Blocked", "done": "Done", "archived": "Archived"}
@@ -30,88 +29,95 @@ def get_db():
 
 def load_tree():
     conn = get_db()
-    cursor = conn.cursor()
+    try:
+        cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT DISTINCT t.id, t.title, t.status, t.assignee, t.body,
-               t.created_at, t.started_at, t.completed_at, t.priority
-        FROM tasks t
-        INNER JOIN task_links l ON t.id = l.parent_id
-        WHERE t.status != 'archived'
-        ORDER BY
-            CASE t.status
-                WHEN 'running' THEN 0
-                WHEN 'ready' THEN 1
-                WHEN 'blocked' THEN 2
-                WHEN 'todo' THEN 3
-                WHEN 'triage' THEN 4
-                WHEN 'done' THEN 5
-                ELSE 6
-            END,
-            t.created_at DESC
-    """)
-    parents = [dict(r) for r in cursor.fetchall()]
-
-    for p in parents:
         cursor.execute("""
-            SELECT t.id, t.title, t.status, t.assignee, t.priority,
-                   t.body, t.started_at, t.completed_at,
-                   t.last_heartbeat_at, t.current_run_id
+            SELECT DISTINCT t.id, t.title, t.status, t.assignee, t.body,
+                   t.created_at, t.started_at, t.completed_at, t.priority
             FROM tasks t
-            INNER JOIN task_links l ON t.id = l.child_id
-            WHERE l.parent_id = ?
-            ORDER BY t.priority DESC, t.created_at ASC
-        """, (p["id"],))
-        children = [dict(r) for r in cursor.fetchall()]
+            INNER JOIN task_links l ON t.id = l.parent_id
+            WHERE t.status != 'archived'
+            ORDER BY
+                CASE t.status
+                    WHEN 'running' THEN 0
+                    WHEN 'ready' THEN 1
+                    WHEN 'blocked' THEN 2
+                    WHEN 'todo' THEN 3
+                    WHEN 'triage' THEN 4
+                    WHEN 'done' THEN 5
+                    ELSE 6
+                END,
+                t.created_at DESC
+        """)
+        parents = [dict(r) for r in cursor.fetchall()]
 
-        # Fetch latest run info for children
-        child_ids = [c["id"] for c in children]
-        if child_ids:
-            placeholders = ",".join("?" * len(child_ids))
-            cursor.execute(f"""
-                SELECT r.task_id, r.status, r.started_at, r.ended_at,
-                       r.worker_pid, r.max_runtime_seconds, r.summary,
-                       t.last_heartbeat_at
-                FROM task_runs r
-                JOIN tasks t ON t.id = r.task_id
-                WHERE r.task_id IN ({placeholders})
-                  AND r.id IN (
-                      SELECT MAX(id) FROM task_runs
-                      WHERE task_id IN ({placeholders})
-                      GROUP BY task_id
-                  )
-            """, child_ids + child_ids)
-            runs = {r["task_id"]: dict(r) for r in cursor.fetchall()}
-            for c in children:
-                c["run"] = runs.get(c["id"])
-                # Copy last_heartbeat_at from tasks if not in run
-                if c.get("last_heartbeat_at") and (not c["run"] or not c["run"].get("last_heartbeat_at")):
-                    if c["run"]:
-                        c["run"]["last_heartbeat_at"] = c["last_heartbeat_at"]
-        else:
-            for c in children:
-                c["run"] = None
+        for p in parents:
+            cursor.execute("""
+                SELECT t.id, t.title, t.status, t.assignee, t.priority,
+                       t.body, t.started_at, t.completed_at,
+                       t.last_heartbeat_at, t.current_run_id
+                FROM tasks t
+                INNER JOIN task_links l ON t.id = l.child_id
+                WHERE l.parent_id = ?
+                ORDER BY t.priority DESC, t.created_at ASC
+            """, (p["id"],))
+            children = [dict(r) for r in cursor.fetchall()]
 
-        # Parse agent flow from body if present
-        if p.get("body"):
-            m = re.search(r'Агенты:\s*([^\n]+)', p["body"])
-            if m:
-                p["agent_flow"] = [a.strip() for a in m.group(1).split("→")]
+            # Fetch latest run info for children
+            child_ids = [c["id"] for c in children]
+            if child_ids:
+                placeholders = ",".join("?" * len(child_ids))
+                cursor.execute(f"""
+                    SELECT r.task_id, r.status, r.started_at, r.ended_at,
+                           r.worker_pid, r.max_runtime_seconds, r.summary,
+                           t.last_heartbeat_at
+                    FROM task_runs r
+                    JOIN tasks t ON t.id = r.task_id
+                    WHERE r.task_id IN ({placeholders})
+                      AND r.id IN (
+                          SELECT MAX(id) FROM task_runs
+                          WHERE task_id IN ({placeholders})
+                          GROUP BY task_id
+                      )
+                """, child_ids + child_ids)
+                runs = {r["task_id"]: dict(r) for r in cursor.fetchall()}
+                for c in children:
+                    c["run"] = runs.get(c["id"])
+                    # Copy last_heartbeat_at from tasks if not in run
+                    if c.get("last_heartbeat_at") and (not c["run"] or not c["run"].get("last_heartbeat_at")):
+                        if c["run"]:
+                            c["run"]["last_heartbeat_at"] = c["last_heartbeat_at"]
+            else:
+                for c in children:
+                    c["run"] = None
 
-        p["children"] = children
-        total = len(children)
-        done = sum(1 for c in children if c["status"] == "done")
-        running = sum(1 for c in children if c["status"] == "running")
-        p["progress"] = {"total": total, "done": done, "running": running, "pct": round(done / total * 100) if total else 0}
+            # Parse agent flow from body if present
+            if p.get("body"):
+                m = re.search(r'Агенты:\s*([^\n]+)', p["body"])
+                if m:
+                    p["agent_flow"] = [a.strip() for a in m.group(1).split("→")]
 
-    conn.close()
-    return parents
+            p["children"] = children
+            total = len(children)
+            done = sum(1 for c in children if c["status"] == "done")
+            running = sum(1 for c in children if c["status"] == "running")
+            p["progress"] = {"total": total, "done": done, "running": running, "pct": round(done / total * 100) if total else 0}
+
+        return parents
+    except sqlite3.Error:
+        # Re-raise after finally closes the connection
+        raise
+    finally:
+        conn.close()
 
 
 # ── Board Management Actions ──────────────────────────────────────────
 
 def _notify_clients(tree=None):
-    """Broadcast a full_update SSE event to all connected clients."""
+    """Broadcast a full_update SSE event to all connected clients.
+    Wakes each SSE client's per-thread event so N-1 clients are not starved.
+    """
     global _sse_clients
     if tree is None:
         tree = load_tree()
@@ -119,15 +125,18 @@ def _notify_clients(tree=None):
     data = msg.encode()
     with _sse_lock:
         dead = set()
-        for wfile, lock in _sse_clients:
+        for entry in _sse_clients:
+            wfile, lock, wake_event = entry
             with lock:
                 try:
                     wfile.write(data)
                     wfile.flush()
                 except (BrokenPipeError, ConnectionResetError, OSError):
-                    dead.add((wfile, lock))
+                    dead.add(entry)
+                    continue
+            # Wake the per-thread event so this client's SSE handler re-checks
+            wake_event.set()
         _sse_clients -= dead
-    _sse_event.set()  # wake up polling waiters
 
 
 def delete_task(task_id):
@@ -347,10 +356,12 @@ class SSEHandler(http.server.BaseHTTPRequestHandler):
 
         wfile = self.wfile
         lock = threading.Lock()
+        # Per-thread notification event — each SSE client gets its own
+        self._sse_wake = threading.Event()
 
-        # Register in the broadcast set
+        # Register in the broadcast set: store (wfile, lock, wake_event)
         with _sse_lock:
-            _sse_clients.add((wfile, lock))
+            _sse_clients.add((wfile, lock, self._sse_wake))
 
         # Send initial tree, then wait for events
         last_tree = None
@@ -364,9 +375,9 @@ class SSEHandler(http.server.BaseHTTPRequestHandler):
                 wfile.flush()
 
             while True:
-                # Wait for either _sse_event (DB changed) or timeout (keepalive)
-                _sse_event.wait(timeout=5)
-                _sse_event.clear()
+                # Wait for either our per-thread event or timeout (keepalive)
+                self._sse_wake.wait(timeout=5)
+                self._sse_wake.clear()
                 tree = load_tree()
                 tree_json = json.dumps(tree, ensure_ascii=False, sort_keys=True)
                 if tree_json != last_tree:
@@ -384,7 +395,7 @@ class SSEHandler(http.server.BaseHTTPRequestHandler):
             pass
         finally:
             with _sse_lock:
-                _sse_clients.discard((wfile, lock))
+                _sse_clients.discard((wfile, lock, self._sse_wake))
 
     def log_message(self, format, *args):
         pass
