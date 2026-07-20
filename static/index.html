@@ -372,8 +372,9 @@ function connectSSE(){
       }else{
         const oldMap={};for(const t of allTasks)oldMap[t.id]=t.status;
         for(const p of data){
-          if(p.status!=='done'&&oldMap[p.id]==='done')expanded.add(p.id);
-          // Auto-collapse done
+          // Auto-expand active tasks (running, ready, blocked)
+          if(p.status==='running'||p.status==='ready'||p.status==='blocked')expanded.add(p.id);
+          // Auto-collapse done tasks
           if(p.status==='done')expanded.delete(p.id);
         }
       }
