@@ -1,0 +1,32 @@
+[Unit]
+Description=Pipeline Dashboard — real-time kanban SSE web UI
+Documentation=https://github.com/V0rt/pipeline-dashboard
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/git/pipeline-dashboard/server.py
+WorkingDirectory=%h/git/pipeline-dashboard
+
+# Port and host
+Environment=PORT=8800
+Environment=HOST=127.0.0.1
+
+# Security hardening — user-mode friendly
+NoNewPrivileges=true
+PrivateTmp=true
+RestrictNamespaces=true
+ProtectClock=true
+ProtectHostname=true
+LockPersonality=true
+
+# Read-only access to kanban.db
+ProtectHome=tmpfs
+BindReadOnlyPaths=%h/.hermes/kanban/boards/pipeline/kanban.db
+
+# Restart on crash
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
