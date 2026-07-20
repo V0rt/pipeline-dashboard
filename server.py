@@ -4,7 +4,6 @@ import os
 import socket
 import sqlite3
 import threading
-import time
 import re
 import urllib.parse
 

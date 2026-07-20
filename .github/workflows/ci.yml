@@ -27,9 +27,8 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt
-      - name: Check server imports
-        run: python3 -c "from server import app; print('OK')"
+      - name: Check server imports and syntax
+        run: python3 -c "import server; print('OK — server imports cleanly')"
 
   build:
     runs-on: ubuntu-latest
@@ -55,8 +54,9 @@ jobs:
           grep -q '<!DOCTYPE html>' static/index.html
           grep -q '</html>' static/index.html
           echo "HTML OK"
-      - name: Check server structure
+      - name: Check server structure (stdlib-only)
         run: |
-          grep -q 'FastAPI' server.py
-          grep -q 'EventSourceResponse' server.py
-          echo "Server OK"
+          grep -q 'http.server' server.py
+          grep -q 'BaseHTTPRequestHandler' server.py
+          grep -q 'ThreadingHTTPServer' server.py
+          echo "Server is pure stdlib — no FastAPI dependencies needed"
