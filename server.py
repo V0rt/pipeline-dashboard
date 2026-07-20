@@ -27,18 +27,20 @@ def get_db():
     return conn
 
 def load_tree():
+    """Build a flat task list with agent children nested inside parents.
+    Shows ALL non-archived tasks — pipeline parents, orphans, and children."""
     conn = get_db()
     try:
         cursor = conn.cursor()
 
+        # --- All non-archived tasks, ordered by status + recency ---
         cursor.execute("""
-            SELECT DISTINCT t.id, t.title, t.status, t.assignee, t.body,
-                   t.created_at, t.started_at, t.completed_at, t.priority
-            FROM tasks t
-            INNER JOIN task_links l ON t.id = l.parent_id
-            WHERE t.status != 'archived'
+            SELECT id, title, body, assignee, status,
+                   created_at, started_at, completed_at, priority
+            FROM tasks
+            WHERE status != 'archived'
             ORDER BY
-                CASE t.status
+                CASE status
                     WHEN 'running' THEN 0
                     WHEN 'ready' THEN 1
                     WHEN 'blocked' THEN 2
@@ -47,65 +49,71 @@ def load_tree():
                     WHEN 'done' THEN 5
                     ELSE 6
                 END,
-                t.created_at DESC
+                created_at DESC
         """)
-        parents = [dict(r) for r in cursor.fetchall()]
+        all_tasks = [dict(r) for r in cursor.fetchall()]
+        task_map = {t["id"]: t for t in all_tasks}
 
-        for p in parents:
-            cursor.execute("""
-                SELECT t.id, t.title, t.status, t.assignee, t.priority,
-                       t.body, t.started_at, t.completed_at,
-                       t.last_heartbeat_at, t.current_run_id
-                FROM tasks t
-                INNER JOIN task_links l ON t.id = l.child_id
-                WHERE l.parent_id = ?
-                ORDER BY t.priority DESC, t.created_at ASC
-            """, (p["id"],))
-            children = [dict(r) for r in cursor.fetchall()]
+        # --- Collect parent→children links ---
+        cursor.execute("""
+            SELECT parent_id, child_id FROM task_links
+        """)
+        links = cursor.fetchall()
+        children_of = {}  # parent_id -> [child_id, ...]
+        parents_of = {}   # child_id -> parent_id
+        for row in links:
+            p, c = row["parent_id"], row["child_id"]
+            children_of.setdefault(p, []).append(c)
+            parents_of[c] = p
 
-            # Fetch latest run info for children
-            child_ids = [c["id"] for c in children]
-            if child_ids:
-                placeholders = ",".join("?" * len(child_ids))
-                cursor.execute(f"""
-                    SELECT r.task_id, r.status, r.started_at, r.ended_at,
-                           r.worker_pid, r.max_runtime_seconds, r.summary,
-                           t.last_heartbeat_at
-                    FROM task_runs r
-                    JOIN tasks t ON t.id = r.task_id
-                    WHERE r.task_id IN ({placeholders})
-                      AND r.id IN (
-                          SELECT MAX(id) FROM task_runs
-                          WHERE task_id IN ({placeholders})
-                          GROUP BY task_id
-                      )
-                """, child_ids + child_ids)
-                runs = {r["task_id"]: dict(r) for r in cursor.fetchall()}
-                for c in children:
-                    c["run"] = runs.get(c["id"])
-                    # Copy last_heartbeat_at from tasks if not in run
-                    if c.get("last_heartbeat_at") and (not c["run"] or not c["run"].get("last_heartbeat_at")):
-                        if c["run"]:
-                            c["run"]["last_heartbeat_at"] = c["last_heartbeat_at"]
+        # --- Build result tree ---
+        result = []
+        seen = set()
+
+        for task in all_tasks:
+            tid = task["id"]
+
+            # Skip if this task is a child — it'll be nested under its parent
+            if tid in parents_of and parents_of[tid] in task_map:
+                continue
+
+            if tid in seen:
+                continue
+            seen.add(tid)
+
+            # Fetch agent children
+            child_ids = children_of.get(tid, [])
+            children = []
+            for cid in child_ids:
+                if cid in task_map:
+                    children.append(task_map[cid])
+                    seen.add(cid)
+
+            if children:
+                # ── Pipeline parent ──
+                total = len(children)
+                done = sum(1 for c in children if c["status"] == "done")
+                running = sum(1 for c in children if c["status"] == "running")
+                task["children"] = children
+                task["progress"] = {
+                    "total": total, "done": done, "running": running,
+                    "pct": round(done / total * 100) if total else 0
+                }
+
+                # Parse agent flow from body
+                if task.get("body"):
+                    m = re.search(r'Агенты:\s*([^\n]+)', task["body"])
+                    if m:
+                        task["agent_flow"] = [a.strip() for a in m.group(1).split("→")]
             else:
-                for c in children:
-                    c["run"] = None
+                # ── Orphan task (no children) ──
+                task["children"] = []
+                task["progress"] = {"total": 0, "done": 0, "running": 0, "pct": 0}
 
-            # Parse agent flow from body if present
-            if p.get("body"):
-                m = re.search(r'Агенты:\s*([^\n]+)', p["body"])
-                if m:
-                    p["agent_flow"] = [a.strip() for a in m.group(1).split("→")]
+            result.append(task)
 
-            p["children"] = children
-            total = len(children)
-            done = sum(1 for c in children if c["status"] == "done")
-            running = sum(1 for c in children if c["status"] == "running")
-            p["progress"] = {"total": total, "done": done, "running": running, "pct": round(done / total * 100) if total else 0}
-
-        return parents
+        return result
     except sqlite3.Error:
-        # Re-raise after finally closes the connection
         raise
     finally:
         conn.close()
